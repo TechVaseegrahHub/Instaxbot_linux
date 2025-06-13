@@ -1,0 +1,51 @@
+"What is F3-Engine?", "F3-Engine is a comprehensive order processing platform designed for e-commerce operations. It includes automated features for printing, packing, tracking, and inventory management, ensuring the seamless and accurate dispatch of orders. This platform helps businesses stay organized and efficient, ultimately enhancing customer satisfaction."
+"What are the features of F3-Engine?", "F3-Engine includes modules for Printing, Packing, Tracking, Holding, and Inventory Management. These features help improve efficiency, reduce manual errors, and provide real-time updates for both the team and customers, enhancing overall customer satisfaction."
+"What is the price of F3-Engine?", "The price of F3-Engine is ₹699 per month as a subscription. This pricing provides full access to all modules and support features included in the platform."
+"What is the Printing feature in F3-Engine?", "The Printing feature in F3-Engine automatically prints shipping labels as a combined PDF when a customer completes their payment. The labels include the customer's address, the ordered products, and the seller's address."
+"Can I customize the shipping slip layout in F3-Engine?", "Yes, F3-Engine allows customization of shipping slips, so businesses can align the layout with their branding and specific business needs."
+"What printer does F3-Engine recommend for printing shipping labels?", "F3-Engine uses the TVS LP 46 Lite printer for printing shipping labels, though any compatible printer can be used as per user preference."
+"What is the Packing feature in F3-Engine?", "The Packing feature ensures that the correct products are packed for each order. This feature minimizes errors, such as sending the wrong products to customers, and ensures that customers receive exactly what they ordered."
+"What is the Tracking feature in F3-Engine?", "The Tracking feature keeps customers informed about the progress of their orders. After an order is shipped, F3-Engine sends real-time updates through WhatsApp and email, including the tracking number, shipping partner, and a link to track the parcel’s location."
+"How can I start using F3-Engine?", "To start using F3-Engine, visit f3engine.com, sign up for an account, and you can begin using the application immediately."
+"How does F3-Engine improve order processing efficiency?", "F3-Engine automates multiple steps in the order fulfillment process, including printing labels, packing the correct products, tracking shipments, and managing inventory. This automation reduces manual errors and speeds up the process, leading to increased efficiency."
+"How does F3-Engine enhance customer satisfaction?", "F3-Engine enhances customer satisfaction by reducing order errors, providing real-time tracking updates through WhatsApp and email, and ensuring that customers receive accurate and timely deliveries. These features build trust and improve the overall shopping experience."
+"Is F3-Engine suitable for small businesses?", "Yes, F3-Engine is designed to be user-friendly and affordable, making it suitable for small businesses looking to streamline their order processing operations without significant investment."
+"Can I use F3-Engine with my existing printer?", "Yes, F3-Engine can be used with any compatible printer, though it is optimized for the TVS LP 46 Lite printer."
+"Does F3-Engine provide real-time inventory management?", "Yes, F3-Engine includes real-time inventory management as part of its features. This helps keep stock levels accurate and up-to-date, which is essential for managing orders and avoiding stockouts or overstocking."
+"What happens if there is an error in order fulfillment?", "F3-Engine is designed to minimize fulfillment errors by automating key processes like label printing, packing, and tracking. However, if an error does occur, the system’s tracking and inventory management features make it easier to quickly identify and resolve the issue."
+"What is the monthly subscription price for the GoWhats WhatsApp API service?", "The monthly subscription fee for the GoWhats WhatsApp API service is ₹999."
+"What is the Meta conversation charge for GoWhats WhatsApp API?", "Meta charges businesses based on the type of conversation over WhatsApp. The charges are as follows: Marketing: ₹0.7846 per conversation, Utility: ₹0.115 per conversation, Authentication: ₹0.115 per conversation, Service Conversations: Free of charge."
+"What documents are required for business verification on GoWhats WhatsApp API?", "The documents required for business verification on GoWhats WhatsApp API include: A valid business registration document (e.g., Certificate of Incorporation, Business License, Udhayam Registration, GST, etc.), Proof of address, Contact details (email and phone number), Website URL or Facebook Page."
+"What documents are required for creating an account on Razorpay for GoWhats service?", "To create an account on Razorpay for GoWhats, you generally need: PAN Card of the business or business owner, Proof of bank account (like a canceled cheque), Business address proof (e.g., utility bill), Business registration documents (like GST certificate, shop establishment certificate), Aadhaar Card (for business owner verification, if required)."
+"What is business verification?", "Business verification is the process of confirming the identity and legitimacy of a business. This involves submitting the required documents to prove the business exists, is legally registered, and meets platform-specific criteria."
+"Is the GoWhats WhatsApp API suitable for small businesses?", "Yes, the GoWhats WhatsApp API can be beneficial for small businesses as it provides a cost-effective way to manage customer conversations on WhatsApp with different types of conversations, like marketing and customer service."
+"Can I use GoWhats WhatsApp API for customer support?", "Yes, GoWhats WhatsApp API can be used for customer support through Service Conversations, which are free of charge, allowing businesses to assist customers without incurring additional costs."
+"What are the types of conversations charged by Meta for GoWhats WhatsApp API?", "Meta charges businesses based on the type of conversation: Marketing conversations incur a charge of ₹0.7846 per conversation, Utility and Authentication conversations incur a charge of ₹0.115 per conversation, Service conversations are free of charge."
+"How does GoWhats WhatsApp API help businesses?", "GoWhats WhatsApp API helps businesses streamline communication with customers by enabling marketing, utility, authentication, and service conversations. It integrates WhatsApp messaging with business systems to improve customer engagement and support."
+"Can I use GoWhats WhatsApp API without a business website or Facebook page?", "No, GoWhats requires either a website URL or a Facebook Page as part of the business verification process, as these are needed to confirm the legitimacy of the business."
+"What happens if I don't provide the required documents for GoWhats business verification?", "Without the required documents for business verification, your GoWhats WhatsApp API account will not be approved, and you will not be able to use the service."
+"What is Instamatic?", "Instamatic is a web application designed to streamline customer communications from Instagram professional accounts."
+"What features does Instamatic offer?", "It provides automated replies, message management, and the ability to send and receive messages to  Instagram accounts.""How does Instamatic help businesses?", "Our app offers a custom inbox solution for managing Instagram customer inquiries within a centralized CRM system."
+"What is the purpose of the instagram_manage_messages permission?", "It enables retrieving messages from Instagram professional accounts, displaying them in our app, and allowing responses directly within the app."
+"Can I use Instamatic to handle all customer communications?", "Yes, it centralizes all Instagram customer communications, making it easier to manage inquiries in one place."
+"Is Instamatic available for use now?", "Instamatic is currently in development and not yet available for public use."
+"Does Instamatic support automated replies?", "Yes, it includes an automated reply feature to instantly respond to customer inquiries."
+"Can Instamatic send and receive Instagram messages?", "Yes, it supports sending and receiving messages for Instagram professional accounts."
+"Who is Instamatic designed for?", "It is designed for businesses looking to manage Instagram customer communications efficiently."
+"Does Instamatic integrate with Instagram professional accounts?", "Yes, it seamlessly integrates with Instagram professional accounts to enhance communication workflows."
+"What services does Tech Vaseegrah provide?", "Tech Vaseegrah develops customized e-commerce websites using WordPress and shopify ." 
+"How can I find out the fees for website development?", "To know about fees and services related queries please contact us at 8524089733 or give me your number we will call you" 
+"Does Tech Vaseegrah offer customized website development?", "Yes, we create websites tailored to the customer's specific requirements.”
+ "What information does Tech Vaseegrah need to start a website project?","We ask questions about the customer's business and their company name before starting the project." 
+"Who should I contact for website development inquiries?", "You can contact Tech Vaseegrah at 8524089733 for any inquiries."
+ "Does Tech Vaseegrah develop e-commerce websites?", "Yes, we specialize in developing e-commerce websites using WordPress."
+ "Can Tech Vaseegrah create a website based on customer preferences?",
+ "Yes, we build websites according to the customer's desires and specifications."
+
+
+
+
+
+
+
+

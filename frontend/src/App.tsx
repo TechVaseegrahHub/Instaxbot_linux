@@ -41,6 +41,7 @@ import Order from './pages/Order'
 import Tracking from './pages/Tracking'
 import Welcomepage from './pages/Welcomepage'
 import Systemmenus from './pages/Systemmenus'
+import Manualorder from './pages/Manualorder'
 // Import ProtectedRoute
 
 function AppContent() {
@@ -194,6 +195,10 @@ function AppContent() {
       <Route 
         path="/systemmenus" 
         element={<ProtectedRoute element={<Systemmenus />} />} 
+      />
+      <Route 
+        path="/manualorder" 
+        element={<ProtectedRoute element={<Manualorder />} />} 
       />
       <Route 
   path="/productcatalog" 

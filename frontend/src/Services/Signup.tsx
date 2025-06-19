@@ -23,7 +23,7 @@ export default function SignupPage(): JSX.Element {
     e.preventDefault();
 
     try {
-      const response = await axios.post('https://app.instaxbot.com/api/auth/signup', {
+      const response = await axios.post('https://8420-117-247-96-193.ngrok-free.app/api/auth/signup', {
         name,
         email,
         password

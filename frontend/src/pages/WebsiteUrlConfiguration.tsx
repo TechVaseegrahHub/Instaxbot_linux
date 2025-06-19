@@ -124,7 +124,7 @@ export default function WebsiteUrlConfiguration() {
     try {
       // Use the API route like in the second code
       await axios.post(
-        'https://app.instaxbot.com/api/urlconfigurationroute/storeCredentials',
+        'https://8420-117-247-96-193.ngrok-free.app/api/urlconfigurationroute/storeCredentials',
         {
           websites,
           tenentId

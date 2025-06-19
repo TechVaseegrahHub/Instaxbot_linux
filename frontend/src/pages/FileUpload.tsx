@@ -50,7 +50,7 @@ export default function FileUpload() {
     try {
       
       const response = await axios.post(
-        'https://app.instaxbot.com/api/fileuploadroute/upload',
+        'https://8420-117-247-96-193.ngrok-free.app/api/fileuploadroute/upload',
         formData,
         {
           headers: {

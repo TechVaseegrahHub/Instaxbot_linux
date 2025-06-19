@@ -45,7 +45,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ bypassTokenCheck = fals
   
   // Define appUrl using useMemo to prevent recreating on every render
   const appUrl = useMemo(() => {
-    return process.env.REACT_APP_API_URL || 'https://app.instaxbot.com';
+    return process.env.REACT_APP_API_URL || 'https://8420-117-247-96-193.ngrok-free.app';
   }, []);
   
   // Create axios instance with useMemo

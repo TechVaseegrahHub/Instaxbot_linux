@@ -30,7 +30,7 @@ const Packing: React.FC = () => {
   const skuInputRef = useRef<HTMLInputElement>(null);
   const orderInputRef = useRef<HTMLInputElement>(null);
   
-  const apiBaseUrl = 'https://app.instaxbot.com';
+  const apiBaseUrl = 'https://8420-117-247-96-193.ngrok-free.app';
 
   // Simplified useEffect - focus on order input when component mounts
   useEffect(() => {

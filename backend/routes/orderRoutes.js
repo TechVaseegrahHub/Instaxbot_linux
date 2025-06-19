@@ -8,7 +8,7 @@ const formatDate = (date) => {
   if (!date) return '';
   try {
     const d = new Date(date);
-    return d.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
+    return d.toISOString().split('T')[0];
   } catch (error) {
     console.error('Date formatting error:', error);
     return '';
@@ -23,32 +23,109 @@ const validateTenantId = (tenentId) => {
   return true;
 };
 
+// Helper function to safely convert MongoDB values to JavaScript primitives
+const safeConvert = (value) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  
+  // Handle MongoDB NumberInt, NumberLong, NumberDecimal
+  if (typeof value === 'object' && value !== null) {
+    if (value.$numberInt !== undefined) {
+      return parseInt(value.$numberInt, 10);
+    }
+    if (value.$numberLong !== undefined) {
+      return parseInt(value.$numberLong, 10);
+    }
+    if (value.$numberDecimal !== undefined) {
+      return parseFloat(value.$numberDecimal);
+    }
+    if (value.$numberDouble !== undefined) {
+      return parseFloat(value.$numberDouble);
+    }
+    // Handle MongoDB Date objects
+    if (value.$date !== undefined) {
+      return new Date(value.$date);
+    }
+  }
+  
+  return value;
+};
+
+// Helper function to deeply clean MongoDB objects
+const cleanMongoObject = (obj) => {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(cleanMongoObject);
+  }
+  
+  if (typeof obj === 'object' && obj !== null) {
+    // Handle special MongoDB types first
+    const converted = safeConvert(obj);
+    if (converted !== obj) {
+      return converted;
+    }
+    
+    // Clean nested objects
+    const cleaned = {};
+    for (const [key, value] of Object.entries(obj)) {
+      cleaned[key] = cleanMongoObject(value);
+    }
+    return cleaned;
+  }
+  
+  return obj;
+};
+
 // Helper function to format order for frontend
 const formatOrderForFrontend = (order) => {
+  const cleanOrder = cleanMongoObject(order); // already defined in your code
+
+  const safeGet = (val, def = '') => {
+    const conv = safeConvert(val);
+    return (conv === null || conv === undefined || typeof conv === 'object') ? def : conv;
+  };
+
   return {
-    id: order.orderId || order._id,
-    date: formatDate(order.created_at),
-    name: order.customer_name || order.profile_name || 'N/A',
-    phoneNumber: order.phone_number || 'N/A',
-    totalAmount: parseFloat(order.total_amount) || 0,
-    status: order.status || 'pending',
-    billNo: order.bill_no || null,
-    paymentStatus: order.paymentStatus || null,
-    paymentMethod: order.paymentMethod || null,
-    products: order.products || [],
-    address: order.address || null,
-    city: order.city || null,
-    state: order.state || null,
-    zipCode: order.zip_code || null,
-    trackingNumber: order.tracking_number || null,
-    trackingStatus: order.tracking_status || null,
-    packingStatus: order.packing_status || null,
-    isPacked: Boolean(order.is_packed),
-    razorpayOrderId: order.razorpayOrderId || null,
-    razorpayPaymentId: order.razorpayPaymentId || null,
-    createdAt: order.created_at || null,
-    updatedAt: order.updated_at || null,
-    customerNotes: order.customer_notes || ''
+    id: cleanOrder.orderId || cleanOrder._id?.toString() || '',
+    date: formatDate(cleanOrder.created_at),
+    name: safeGet(cleanOrder.customer_name) || safeGet(cleanOrder.profile_name) || 'N/A',
+    phoneNumber: safeGet(cleanOrder.phone_number, 'N/A'),
+    totalAmount: parseFloat(safeConvert(cleanOrder.total_amount)) || 0,
+    status: (safeGet(cleanOrder.status, 'CREATED')).toString().toUpperCase(),
+    billNo: safeGet(cleanOrder.bill_no),
+    paymentStatus: safeGet(cleanOrder.paymentStatus),
+    paymentMethod: safeGet(cleanOrder.paymentMethod),
+
+    products: Array.isArray(cleanOrder.products)
+      ? cleanOrder.products.map(product => ({
+          sku: safeGet(product.sku),
+          product_name: safeGet(product.product_name),
+          quantity: parseInt(safeConvert(product.quantity)) || 1,
+          price: parseFloat(safeConvert(product.price)) || 0,
+        }))
+      : [],
+
+    address: safeGet(cleanOrder.address),
+    city: safeGet(cleanOrder.city),
+    state: safeGet(cleanOrder.state),
+    zipCode: safeGet(cleanOrder.zip_code || cleanOrder.zipCode),
+    pincode: safeGet(cleanOrder.pincode || cleanOrder.pin_code),
+    country: safeGet(cleanOrder.country),
+    fullAddress: safeGet(cleanOrder.full_address),
+    landmark: safeGet(cleanOrder.landmark),
+    trackingNumber: safeGet(cleanOrder.tracking_number),
+    trackingStatus: safeGet(cleanOrder.tracking_status),
+    packingStatus: safeGet(cleanOrder.packing_status),
+    isPacked: Boolean(cleanOrder.is_packed),
+    razorpayOrderId: safeGet(cleanOrder.razorpayOrderId),
+    razorpayPaymentId: safeGet(cleanOrder.razorpayPaymentId),
+    createdAt: cleanOrder.created_at,
+    updatedAt: cleanOrder.updated_at,
+    customerNotes: safeGet(cleanOrder.customer_notes),
   };
 };
 
@@ -56,9 +133,10 @@ const formatOrderForFrontend = (order) => {
 const buildSearchQuery = (tenentId, search, status, startDate, endDate) => {
   let query = { tenentId };
   
-  // Add status filter if provided
+  // Add status filter - exact match, case-insensitive
   if (status && status.trim()) {
-    query.status = { $regex: new RegExp(status.trim(), 'i') };
+    const statusTrim = status.trim();
+    query.status = { $regex: new RegExp(`^${statusTrim}$`, 'i') };
   }
   
   // Add date range filter
@@ -72,7 +150,7 @@ const buildSearchQuery = (tenentId, search, status, startDate, endDate) => {
     }
   }
   
-  // Add search functionality
+  // Add search functionality with enhanced location fields
   if (search && search.trim()) {
     const searchTerm = search.trim();
     query.$or = [
@@ -82,13 +160,24 @@ const buildSearchQuery = (tenentId, search, status, startDate, endDate) => {
       { phone_number: { $regex: searchTerm, $options: 'i' } },
       { bill_no: { $regex: searchTerm, $options: 'i' } },
       { address: { $regex: searchTerm, $options: 'i' } },
+      { full_address: { $regex: searchTerm, $options: 'i' } },
       { city: { $regex: searchTerm, $options: 'i' } },
-      { state: { $regex: searchTerm, $options: 'i' } }
+      { state: { $regex: searchTerm, $options: 'i' } },
+      { country: { $regex: searchTerm, $options: 'i' } },
+      { landmark: { $regex: searchTerm, $options: 'i' } },
+      { zip_code: { $regex: searchTerm, $options: 'i' } },
+      { pincode: { $regex: searchTerm, $options: 'i' } },
+      { pin_code: { $regex: searchTerm, $options: 'i' } }
     ];
     
-    // If search term is a number, also search by total amount
+    // If search term is a number, also search by total amount and postal codes
     if (!isNaN(searchTerm) && searchTerm !== '') {
-      query.$or.push({ total_amount: parseFloat(searchTerm) });
+      query.$or.push(
+        { total_amount: parseFloat(searchTerm) },
+        { zip_code: searchTerm },
+        { pincode: searchTerm },
+        { pin_code: searchTerm }
+      );
     }
   }
   
@@ -118,29 +207,45 @@ router.post('/fetch-orders', async (req, res) => {
 
     // Validate and sanitize pagination parameters
     const pageNum = Math.max(1, parseInt(page) || 1);
-    const limitNum = Math.min(Math.max(1, parseInt(limit) || 20), 100); // Max 100 items per page
+    const limitNum = Math.min(Math.max(1, parseInt(limit) || 20), 100);
 
-    console.log(`Fetching orders - tenentId: ${tenentId}, page: ${pageNum}, limit: ${limitNum}`);
+    console.log(`\n=== FETCH ORDERS REQUEST ===`);
+    console.log(`TenantId: ${tenentId}`);
+    console.log(`Page: ${pageNum} (requested: ${page})`);
+    console.log(`Limit: ${limitNum} (requested: ${limit})`);
+    console.log(`Status Filter: "${status}"`);
+    console.log(`Search Term: "${search}"`);
 
     // Build query object
     const query = buildSearchQuery(tenentId, search, status, startDate, endDate);
     
-    console.log("Query:", JSON.stringify(query, null, 2));
+    console.log(`MongoDB Query:`, JSON.stringify(query, null, 2));
 
     // Calculate pagination
     const skip = (pageNum - 1) * limitNum;
+    console.log(`Skip: ${skip} records`);
     
     // Execute queries in parallel for better performance
+    // Use .lean() to get plain JavaScript objects instead of Mongoose documents
     const [orders, totalOrders] = await Promise.all([
       Order.find(query)
         .sort({ created_at: -1 })
         .skip(skip)
         .limit(limitNum)
-        .lean(),
+        .lean(), // This is crucial for avoiding MongoDB BSON objects
       Order.countDocuments(query)
     ]);
     
-    // Format orders for frontend
+    console.log(`\n=== QUERY RESULTS ===`);
+    console.log(`Total orders matching query: ${totalOrders}`);
+    console.log(`Orders returned for page ${pageNum}: ${orders.length}`);
+
+    // Log first order structure for debugging
+    if (orders.length > 0) {
+      console.log(`Sample order structure:`, JSON.stringify(orders[0], null, 2));
+    }
+    
+    // Format orders for frontend with proper cleaning
     const formattedOrders = orders.map(formatOrderForFrontend);
 
     // Calculate pagination info
@@ -148,87 +253,36 @@ router.post('/fetch-orders', async (req, res) => {
     const hasNextPage = pageNum < totalPages;
     const hasPrevPage = pageNum > 1;
 
-    console.log(`Found ${orders.length} orders out of ${totalOrders} total`);
+    console.log(`\n=== PAGINATION INFO ===`);
+    console.log(`Total Pages: ${totalPages}`);
+    console.log(`Current Page: ${pageNum}`);
+    console.log(`Has Next Page: ${hasNextPage}`);
+    console.log(`Has Previous Page: ${hasPrevPage}`);
+    console.log(`=========================\n`);
 
-    res.status(200).json({
+    // Ensure all response data is clean
+    const response = {
       success: true,
       data: formattedOrders,
       pagination: {
         currentPage: pageNum,
-        totalPages,
-        totalOrders,
-        hasNextPage,
-        hasPrevPage,
-        itemsPerPage: limitNum,
-        startIndex: skip + 1,
-        endIndex: Math.min(skip + limitNum, totalOrders)
+        totalPages: parseInt(totalPages),
+        totalOrders: parseInt(totalOrders),
+        hasNextPage: Boolean(hasNextPage),
+        hasPrevPage: Boolean(hasPrevPage),
+        itemsPerPage: parseInt(limitNum),
+        startIndex: parseInt(skip + 1),
+        endIndex: parseInt(Math.min(skip + limitNum, totalOrders))
       }
-    });
+    };
+
+    res.status(200).json(response);
 
   } catch (error) {
     console.error('Error fetching orders:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch orders',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
-  }
-});
-
-// Route to fetch single order by ID
-router.post('/fetch-order/:orderNumber', async (req, res) => {
-  try {
-    const { orderNumber } = req.params;
-    const { tenentId } = req.body;
-    
-    // Validate required fields
-    if (!orderNumber || !validateTenantId(tenentId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Order number and valid tenant ID are required'
-      });
-    }
-
-    console.log(`Fetching order: ${orderNumber}, tenentId: ${tenentId}`);
-    
-    let order = null;
-    
-    // Try to find by orderId first
-    order = await Order.findOne({ 
-      orderId: orderNumber,
-      tenentId: tenentId 
-    }).lean();
-    
-    // If not found by orderId, try by MongoDB _id
-    if (!order && mongoose.Types.ObjectId.isValid(orderNumber)) {
-      order = await Order.findOne({
-        _id: orderNumber,
-        tenentId: tenentId
-      }).lean();
-    }
-    
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
-    
-    // Format order for frontend
-    const formattedOrder = formatOrderForFrontend(order);
-    
-    console.log(`Order found: ${formattedOrder.id}`);
-    
-    res.status(200).json({
-      success: true,
-      data: formattedOrder
-    });
-    
-  } catch (error) {
-    console.error('Error fetching order:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch order',
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
@@ -248,8 +302,11 @@ router.post('/update-status/:orderNumber', async (req, res) => {
       });
     }
 
-    const sanitizedStatus = status.trim();
-    console.log(`Updating order status: ${orderNumber}, tenentId: ${tenentId}, status: ${sanitizedStatus}`);
+    const sanitizedStatus = status.trim().toUpperCase();
+    console.log(`\n=== UPDATE ORDER STATUS ===`);
+    console.log(`Order Number: ${orderNumber}`);
+    console.log(`Tenant ID: ${tenentId}`);
+    console.log(`New Status: ${sanitizedStatus}`);
     
     // Try to update by orderId first
     let result = await Order.updateOne(
@@ -263,8 +320,11 @@ router.post('/update-status/:orderNumber', async (req, res) => {
       }
     );
     
+    console.log(`Update by orderId - Matched: ${result.matchedCount}, Modified: ${result.modifiedCount}`);
+    
     // If no match found by orderId, try by MongoDB _id
     if (result.matchedCount === 0 && mongoose.Types.ObjectId.isValid(orderNumber)) {
+      console.log(`Trying update by MongoDB _id...`);
       result = await Order.updateOne(
         {
           _id: orderNumber,
@@ -275,6 +335,7 @@ router.post('/update-status/:orderNumber', async (req, res) => {
           updated_at: new Date()
         }
       );
+      console.log(`Update by _id - Matched: ${result.matchedCount}, Modified: ${result.modifiedCount}`);
     }
     
     if (result.matchedCount === 0) {
@@ -284,10 +345,14 @@ router.post('/update-status/:orderNumber', async (req, res) => {
       });
     }
     
+    console.log(`Successfully updated order ${orderNumber} to status ${sanitizedStatus}`);
+    console.log(`========================\n`);
+    
     res.status(200).json({
       success: true,
       message: 'Order status updated successfully',
-      updatedCount: result.modifiedCount
+      updatedCount: parseInt(result.modifiedCount),
+      newStatus: sanitizedStatus
     });
     
   } catch (error) {
@@ -300,8 +365,61 @@ router.post('/update-status/:orderNumber', async (req, res) => {
   }
 });
 
-// Route to get order statistics
-router.post('/fetch-stats', async (req, res) => {
+// Route to fetch single order by ID
+router.post('/fetch-order/:orderNumber', async (req, res) => {
+  try {
+    const { orderNumber } = req.params;
+    const { tenentId } = req.body;
+    
+    if (!orderNumber || !validateTenantId(tenentId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order number and valid tenant ID are required'
+      });
+    }
+
+    console.log(`Fetching single order: ${orderNumber}, tenentId: ${tenentId}`);
+    
+    let order = null;
+    
+    order = await Order.findOne({ 
+      orderId: orderNumber,
+      tenentId: tenentId 
+    }).lean(); // Use .lean() here too
+    
+    if (!order && mongoose.Types.ObjectId.isValid(orderNumber)) {
+      order = await Order.findOne({
+        _id: orderNumber,
+        tenentId: tenentId
+      }).lean(); // Use .lean() here too
+    }
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+    
+    const formattedOrder = formatOrderForFrontend(order);
+    
+    res.status(200).json({
+      success: true,
+      data: formattedOrder
+    });
+    
+  } catch (error) {
+    console.error('Error fetching order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch order',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+});
+ 
+ // Route to get order statistics
+ router.post('/fetch-stats', async (req, res) => {
   try {
     const { tenentId } = req.body;
     
@@ -324,7 +442,7 @@ router.post('/fetch-stats', async (req, res) => {
           completedOrders: {
             $sum: {
               $cond: [
-                { $in: [{ $toLower: '$status' }, ['completed', 'delivered']] },
+                { $in: [{ $toUpper: '$status' }, ['COMPLETED', 'DELIVERED']] },
                 1,
                 0
               ]
@@ -333,7 +451,7 @@ router.post('/fetch-stats', async (req, res) => {
           pendingOrders: {
             $sum: {
               $cond: [
-                { $in: [{ $toLower: '$status' }, ['pending', 'created']] },
+                { $in: [{ $toUpper: '$status' }, ['PENDING', 'CREATED']] },
                 1,
                 0
               ]
@@ -342,7 +460,7 @@ router.post('/fetch-stats', async (req, res) => {
           processingOrders: {
             $sum: {
               $cond: [
-                { $in: [{ $toLower: '$status' }, ['processing', 'paid']] },
+                { $in: [{ $toUpper: '$status' }, ['PROCESSING', 'PAID']] },
                 1,
                 0
               ]
@@ -351,7 +469,7 @@ router.post('/fetch-stats', async (req, res) => {
           shippedOrders: {
             $sum: {
               $cond: [
-                { $eq: [{ $toLower: '$status' }, 'shipped'] },
+                { $eq: [{ $toUpper: '$status' }, 'SHIPPED'] },
                 1,
                 0
               ]
@@ -360,7 +478,7 @@ router.post('/fetch-stats', async (req, res) => {
           cancelledOrders: {
             $sum: {
               $cond: [
-                { $in: [{ $toLower: '$status' }, ['cancelled', 'failed']] },
+                { $in: [{ $toUpper: '$status' }, ['CANCELLED', 'FAILED']] },
                 1,
                 0
               ]
@@ -390,8 +508,6 @@ router.post('/fetch-stats', async (req, res) => {
       packedOrders: 0
     };
     
-    console.log('Order stats:', JSON.stringify(result, null, 2));
-    
     res.status(200).json({
       success: true,
       data: result
@@ -405,10 +521,10 @@ router.post('/fetch-stats', async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
-});
-
-// Route to get orders by status with pagination
-router.post('/fetch-by-status/:status', async (req, res) => {
+ });
+ 
+ // Route to get orders by status with pagination
+ router.post('/fetch-by-status/:status', async (req, res) => {
   try {
     const { status } = req.params;
     const { tenentId, limit = 50, page = 1 } = req.body;
@@ -419,19 +535,18 @@ router.post('/fetch-by-status/:status', async (req, res) => {
         message: 'Status and valid tenant ID are required'
       });
     }
-
+ 
     const pageNum = Math.max(1, parseInt(page) || 1);
     const limitNum = Math.min(Math.max(1, parseInt(limit) || 50), 100);
     const skip = (pageNum - 1) * limitNum;
-
+ 
     console.log(`Fetching orders with status: ${status}, tenentId: ${tenentId}`);
-
+ 
     const query = {
       tenentId: tenentId,
-      status: { $regex: new RegExp(status.trim(), 'i') }
+      status: { $regex: new RegExp(`^${status.trim()}$`, 'i') }
     };
-
-    // Execute queries in parallel
+ 
     const [orders, totalOrders] = await Promise.all([
       Order.find(query)
         .sort({ created_at: -1 })
@@ -440,24 +555,9 @@ router.post('/fetch-by-status/:status', async (req, res) => {
         .lean(),
       Order.countDocuments(query)
     ]);
-
-    // Format orders for frontend
-    const formattedOrders = orders.map(order => ({
-      id: order.orderId || order._id,
-      date: formatDate(order.created_at),
-      name: order.customer_name || order.profile_name || 'N/A',
-      phoneNumber: order.phone_number || 'N/A',
-      totalAmount: parseFloat(order.total_amount) || 0,
-      status: order.status || 'pending',
-      billNo: order.bill_no,
-      paymentStatus: order.paymentStatus,
-      packingStatus: order.packing_status,
-      isPacked: Boolean(order.is_packed),
-      trackingStatus: order.tracking_status
-    }));
-
-    console.log(`Found ${orders.length} orders with status: ${status}`);
-
+ 
+    const formattedOrders = orders.map(formatOrderForFrontend);
+ 
     res.status(200).json({
       success: true,
       data: formattedOrders,
@@ -479,10 +579,10 @@ router.post('/fetch-by-status/:status', async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
-});
-
-// Route to get pending orders that need attention
-router.get('/pending-orders/:tenentId', async (req, res) => {
+ });
+ 
+ // Route to get pending orders
+ router.get('/pending-orders/:tenentId', async (req, res) => {
   try {
     const { tenentId } = req.params;
     const { limit = 50 } = req.query;
@@ -493,45 +593,27 @@ router.get('/pending-orders/:tenentId', async (req, res) => {
         message: 'Valid tenant ID is required'
       });
     }
-
+ 
     const limitNum = Math.min(Math.max(1, parseInt(limit) || 50), 100);
-
-    console.log(`Fetching pending orders for tenentId: ${tenentId}`);
-
-    // Find all orders that need attention
+ 
     const pendingOrders = await Order.find({
       tenentId: tenentId,
       $or: [
-        // Include orders that are paid/processing and not packed
         { 
-          status: { $in: ['paid', 'processing', 'PAID', 'PROCESSING'] },
+          status: { $regex: /^(paid|processing)$/i },
           $or: [{ is_packed: false }, { is_packed: { $exists: false } }]
         },
-        // Include pending orders
         {
-          status: { $in: ['pending', 'PENDING', 'created', 'CREATED'] }
+          status: { $regex: /^(pending|created)$/i }
         }
       ]
     })
-    .sort({ created_at: 1 }) // Sort by creation date, oldest first
+    .sort({ created_at: 1 })
     .limit(limitNum)
-    .select('orderId status packing_status created_at customer_name is_packed phone_number total_amount')
     .lean();
-
-    // Format orders for frontend
-    const formattedOrders = pendingOrders.map(order => ({
-      id: order.orderId || order._id,
-      date: formatDate(order.created_at),
-      name: order.customer_name || 'N/A',
-      phoneNumber: order.phone_number || 'N/A',
-      totalAmount: parseFloat(order.total_amount) || 0,
-      status: order.status || 'pending',
-      packingStatus: order.packing_status,
-      isPacked: Boolean(order.is_packed)
-    }));
-
-    console.log(`Found ${pendingOrders.length} pending orders`);
-
+ 
+    const formattedOrders = pendingOrders.map(formatOrderForFrontend);
+ 
     res.status(200).json({
       success: true,
       orders: formattedOrders,
@@ -545,14 +627,13 @@ router.get('/pending-orders/:tenentId', async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
-});
-
-// Route to bulk update order statuses
-router.post('/bulk-update-status', async (req, res) => {
+ });
+ 
+ // Route to bulk update order statuses
+ router.post('/bulk-update-status', async (req, res) => {
   try {
     const { tenentId, orderIds, status } = req.body;
-
-    // Validate required fields
+ 
     if (!validateTenantId(tenentId) || 
         !orderIds || 
         !Array.isArray(orderIds) || 
@@ -564,19 +645,16 @@ router.post('/bulk-update-status', async (req, res) => {
         message: 'Tenant ID, order IDs array, and status are required'
       });
     }
-
-    // Limit bulk operations to prevent abuse
+ 
     if (orderIds.length > 100) {
       return res.status(400).json({
         success: false,
         message: 'Maximum 100 orders can be updated at once'
       });
     }
-
-    const sanitizedStatus = status.trim();
-    console.log(`Bulk updating ${orderIds.length} orders to status: ${sanitizedStatus}, tenentId: ${tenentId}`);
-
-    // Update multiple orders at once
+ 
+    const sanitizedStatus = status.trim().toUpperCase();
+ 
     const result = await Order.updateMany(
       { 
         orderId: { $in: orderIds },
@@ -587,9 +665,7 @@ router.post('/bulk-update-status', async (req, res) => {
         updated_at: new Date()
       }
     );
-
-    console.log(`Updated ${result.modifiedCount} orders out of ${orderIds.length} requested`);
-
+ 
     res.status(200).json({
       success: true,
       message: `Successfully updated ${result.modifiedCount} orders to ${sanitizedStatus}`,
@@ -605,10 +681,10 @@ router.post('/bulk-update-status', async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
-});
-
-// Consolidated search route (replaces the separate search-orders route)
-router.post('/search', async (req, res) => {
+ });
+ 
+ // Consolidated search route
+ router.post('/search', async (req, res) => {
   try {
     const { tenentId, searchTerm, limit = 20, page = 1 } = req.body;
     
@@ -618,17 +694,13 @@ router.post('/search', async (req, res) => {
         message: 'Tenant ID and search term are required'
       });
     }
-
+ 
     const pageNum = Math.max(1, parseInt(page) || 1);
     const limitNum = Math.min(Math.max(1, parseInt(limit) || 20), 100);
     const skip = (pageNum - 1) * limitNum;
-
-    console.log(`Searching orders for: ${searchTerm}, tenentId: ${tenentId}`);
-
-    // Use the buildSearchQuery helper function
+ 
     const query = buildSearchQuery(tenentId, searchTerm, '', '', '');
-
-    // Execute queries in parallel
+ 
     const [orders, totalOrders] = await Promise.all([
       Order.find(query)
         .sort({ created_at: -1 })
@@ -637,12 +709,9 @@ router.post('/search', async (req, res) => {
         .lean(),
       Order.countDocuments(query)
     ]);
-
-    // Format orders for frontend
+ 
     const formattedOrders = orders.map(formatOrderForFrontend);
-
-    console.log(`Found ${orders.length} orders matching search: ${searchTerm}`);
-
+ 
     res.status(200).json({
       success: true,
       data: formattedOrders,
@@ -665,6 +734,6 @@ router.post('/search', async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
-});
-
-module.exports = router;
+ });
+ 
+ module.exports = router;

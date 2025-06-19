@@ -26,7 +26,7 @@ import {
   HoverCardTrigger,
   HoverCardContent,
 } from "@/components/ui/hover-card";
-import instaxbotLogo from "../assets/instaxbot_Logo.png";
+import instaxbotLogo from "../assets/Instaxbot_Logo.png";
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
@@ -87,6 +87,7 @@ export default function Sidebar() {
     { name: "Website Url Configuration", icon: Link2, path: "/website-url-configuration" },
     { name: "Products", icon: Boxes, path: "/product-inventory" },
     { name: "Order", icon: Package, path: "/order" },
+    { name: "Manual order", icon: Package, path: "/manualorder" },
     { name: "Printing", icon: Printer, path: "/printing" },
     { name: "Packing", icon: Package, path: "/packing" },
     { name: "Holding", icon: Package, path: "/holding" },

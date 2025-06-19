@@ -50,7 +50,7 @@ const ProductDetailsInput = () => {
 
     try {
       const tenentId = localStorage.getItem('tenentid');
-      const response = await axios.post('https://app.instaxbot.com/api/urlconfiguration/product-list', {
+      const response = await axios.post('https://8420-117-247-96-193.ngrok-free.app/api/urlconfiguration/product-list', {
         tenentId,
         products
       });

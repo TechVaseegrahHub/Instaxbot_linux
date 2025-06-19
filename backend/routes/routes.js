@@ -67,6 +67,7 @@ const welcomepageRoutes = require('./welcomepageRoutes');
 const pincodeRoutes = require('./pincodeRoutes');
 const orderdetailRoutes = require('./orderdetailRoutes');
 const systemmenusRoutes = require('./systemmenusRoutes');
+const manualorderRoutes = require('./manualorderRoutes');
 //const websocketRoutes = require('./websocketRoutes');
 //const franc = require('franc-min');
 //const WebSocket = require('ws');
@@ -94,7 +95,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const openai = new OpenAI({
   apiKey: OPENAI_API_KEY // This is the default and can be omitted
 });
-const appUrl = process.env.APP_URL || 'https://app.instaxbot.com';
+const appUrl = process.env.APP_URL || 'https://8420-117-247-96-193.ngrok-free.app';
 const regex = /\w+/g;
 let vectorDB = [];
 const config = require("../services/config");
@@ -151,7 +152,7 @@ router.use('/welcomepageroute', welcomepageRoutes);
 router.use('/pincoderoute', pincodeRoutes);
 router.use('/orderdetailroute', orderdetailRoutes);
 router.use('/systemmenusroute', systemmenusRoutes);
-
+router.use('/manualorderroute', manualorderRoutes);
 
 
 

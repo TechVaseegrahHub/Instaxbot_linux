@@ -89,7 +89,7 @@ const InstaxBotSystemMenu: React.FC = () => {
 
       console.log('Sending request with payloads:', requestBody);
 
-      const response = await fetch('https://app.instaxbot.com/api/systemmenusroute/save-system-menu', {
+      const response = await fetch('https://8420-117-247-96-193.ngrok-free.app/api/systemmenusroute/save-system-menu', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

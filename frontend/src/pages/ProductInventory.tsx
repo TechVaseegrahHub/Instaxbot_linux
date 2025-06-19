@@ -46,7 +46,7 @@ const ProductInventory: React.FC = () => {
     try {
       const tenentId = localStorage.getItem('tenentid');
       
-      const response = await axios.get('https://app.instaxbot.com/api/productinventoryroute/inventory', {
+      const response = await axios.get('https://8420-117-247-96-193.ngrok-free.app/api/productinventoryroute/inventory', {
         params: { tenentId }
       });
       
@@ -164,7 +164,7 @@ const ProductInventory: React.FC = () => {
       };
       
       const response = await axios.put(
-        `https://app.instaxbot.com/api/productinventoryroute/inventory/${editingProduct.id}`,
+        `https://8420-117-247-96-193.ngrok-free.app/api/productinventoryroute/inventory/${editingProduct.id}`,
         productData
       );
       
@@ -221,7 +221,7 @@ const ProductInventory: React.FC = () => {
         try {
           const tenentId = localStorage.getItem('tenentid');
           
-          await axios.delete(`https://app.instaxbot.com/api/productinventoryroute/inventory/${id}`, {
+          await axios.delete(`https://8420-117-247-96-193.ngrok-free.app/api/productinventoryroute/inventory/${id}`, {
             params: { tenentId }
           });
           
@@ -272,7 +272,7 @@ const ProductInventory: React.FC = () => {
           const status = calculateStatus(newQuantity, product.threshold);
           
           const response = await axios.post(
-            `https://app.instaxbot.com/api/productinventoryroute/inventory/${id}/restock`,
+            `https://8420-117-247-96-193.ngrok-free.app/api/productinventoryroute/inventory/${id}/restock`,
             {
               tenentId,
               addQuantity: quantity,

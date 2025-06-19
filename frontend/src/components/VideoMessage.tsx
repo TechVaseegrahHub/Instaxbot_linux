@@ -83,7 +83,7 @@ const VideoMessage: React.FC<VideoMessageProps> = ({
         }
   
         try {
-          const baseUrl = process.env.REACT_APP_API_URL || 'https://app.instaxbot.com';
+          const baseUrl = process.env.REACT_APP_API_URL || 'https://8420-117-247-96-193.ngrok-free.app';
           const proxyUrl = `${baseUrl}/api/imageproxyroutes/proxy-video`;
   
           if (sourceVideoUrl) {

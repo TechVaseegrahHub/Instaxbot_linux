@@ -106,7 +106,7 @@ interface PrintManagementProps {
   orderData?: OrderType
 }
 
-// UNIFIED LAYOUT DATA STRUCTURE - Single source of truth for both print and PDF
+// UNIFIED LAYOUT DATA STRUCTURE - Single source of truth for both single and bulk print
 interface UnifiedLayoutData {
   // Template dimensions
   templateWidth: number
@@ -121,7 +121,7 @@ interface UnifiedLayoutData {
   lineHeight: number
   letterSpacing: string
 
-  // Spacing and positioning
+  // Spacing and positioning - IDENTICAL for single and bulk
   marginPx: number
   marginPt: number
   paddingPx: number
@@ -131,7 +131,7 @@ interface UnifiedLayoutData {
   topPaddingAdjustment: number
   sectionSpacing: number
 
-  // Box dimensions
+  // Box dimensions - IDENTICAL for single and bulk
   toAddressBoxHeight: number
   detailBoxHeight: number
 
@@ -436,7 +436,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
     }
   }
 
-  // IMPROVED UNIFIED LAYOUT GENERATOR - Fixed spacing and alignment calculations
+  // PERFECT UNIFIED LAYOUT GENERATOR - IDENTICAL for single and bulk print
   const generateUnifiedLayoutData = (
     billData: any,
     template: TemplateType | null,
@@ -448,7 +448,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
     const templateWidthPt = templateWidth * 0.75 // Convert px to pt (96 DPI)
     const templateHeightPt = templateHeight * 0.75
 
-    // IMPROVED Template-specific styling with better proportions
+    // PERFECT Template-specific styling - IDENTICAL for single and bulk
     let styling
     if (template?.id === "2x4" || templateWidth <= 192) {
       styling = {
@@ -483,7 +483,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
         borderWidthPt: 1.125,
         topPaddingAdjustment: 6,
         sectionSpacing: 5,
-        barcodeWidth: 1.2,
+        barcodeWidth: 1.5,
         barcodeHeight: 30,
       }
     } else {
@@ -501,12 +501,12 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
         borderWidthPt: 1.125,
         topPaddingAdjustment: 8,
         sectionSpacing: 6,
-        barcodeWidth: 1.2,
+        barcodeWidth: 1.5,
         barcodeHeight: 35,
       }
     }
 
-    // Format order data (EXACT same formatting for both print and PDF)
+    // Format order data (EXACT same formatting for both single and bulk print)
     const formattedOrder = {
       id: billData.bill_id,
       name: billData.customer_details.name,
@@ -518,7 +518,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
         zipCode: billData.customer_details.pincode,
         phone: billData.customer_details.phone,
       },
-      shipVia: billData.shipping_details?.method_name || "Standard Shipping",
+      shipVia: billData.shipping_details?.method_name || "ST Courier",
       products: billData.product_details,
       totalItems: billData.product_details.reduce((total: number, product: any) => total + product.quantity, 0),
       orderDate: `${billData.bill_details.date}, ${billData.bill_details.time}`,
@@ -534,7 +534,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
       phone: billData.organisation_details?.phone || fromAddr.phone,
     }
 
-    // IMPROVED Format products text with better truncation logic
+    // Format products text with IDENTICAL logic for single and bulk
     const formatProductsList = (products: Array<{ productName?: string; name?: string; quantity: number }>): string => {
       if (!products || products.length === 0) {
         return "No products"
@@ -549,22 +549,21 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
             productName.length > maxLength ? productName.substring(0, maxLength - 1) + "…" : productName
           return `${truncatedName} × ${product.quantity}`
         })
-        .join(", ")
+        .join("\n")
     }
 
     const productText = formatProductsList(formattedOrder.products)
 
-    // IMPROVED Calculate box dimensions with better proportions and spacing
+    // IMPROVED Calculate box dimensions for single and bulk print - INCREASED detail box heights
     const availableHeight = templateHeightPt - 2 * styling.marginPt - styling.topPaddingAdjustment
     const headerHeight = styling.titleFontSize * 3 // Ship via + Order ID + spacing
     const barcodeHeight = styling.barcodeHeight + 20 // Barcode + margins
     const remainingHeight = availableHeight - headerHeight - barcodeHeight
 
-    // Adjust box heights to ensure product section starts below mobile number
-    const toAddressBoxHeight = Math.max(remainingHeight * 0.32, 55) // Slightly reduced
-    const detailBoxHeight = Math.max(remainingHeight * 0.32, 55) // Increased to accommodate mobile number
-    const productSectionSpacing = styling.sectionSpacing + 2 // Extra spacing between boxes
-    console.log(productSectionSpacing)
+    // INCREASED box heights - making From and Prepaid Order boxes taller
+    const toAddressBoxHeight = Math.max(remainingHeight * 0.32, 55) // Reduced TO address to make room
+    const detailBoxHeight = Math.max(remainingHeight * 0.38, 70) // INCREASED detail boxes significantly
+
     return {
       templateWidth,
       templateHeight,
@@ -608,9 +607,182 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
     })
   }
 
-  // IMPROVED UNIFIED PRINT CONTENT GENERATOR with better box alignment
-  const generatePrintContent = (layout: UnifiedLayoutData, barcodeDataUrl = ""): string => {
+  // UNIFIED PRINT CONTENT GENERATOR - IDENTICAL CSS for single and bulk print
+  const generateUnifiedPrintContent = (layout: UnifiedLayoutData, barcodeDataUrl = "", isBulk = false): string => {
     const { formattedOrder, fromAddress: fromAddr } = layout
+
+    // IDENTICAL CSS for both single and bulk print
+    const unifiedCSS = `
+      @media print {
+        @page {
+          size: ${layout.templateWidthPt / 72}in ${layout.templateHeightPt / 72}in;
+          margin: 0;
+        }
+        body {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: ${layout.templateWidth}px !important;
+          height: ${layout.templateHeight}px !important;
+          max-height: ${layout.templateHeight}px !important;
+          overflow: hidden !important;
+        }
+        .container {
+          width: 100% !important;
+          height: 100% !important;
+          page-break-after: always;
+          overflow: hidden !important;
+          box-sizing: border-box;
+          padding: ${layout.paddingPx}px !important;
+          border: 0 !important;
+        }
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        font-size: ${layout.baseFontSize}px;
+        line-height: ${layout.lineHeight};
+        font-weight: normal;
+        letter-spacing: ${layout.letterSpacing};
+      }
+
+      .container {
+        width: ${layout.templateWidth}px;
+        height: ${layout.templateHeight}px;
+        margin: 0 auto;
+        padding: ${layout.paddingPx}px;
+        box-sizing: border-box;
+        position: relative;
+        border: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        font-size: ${layout.baseFontSize}px;
+        font-weight: normal;
+        margin-bottom: 4px;
+        text-align: left;
+        flex-shrink: 0;
+      }
+
+      .order-id {
+        font-size: ${layout.baseFontSize}px;
+        font-weight: normal;
+        margin-bottom: 6px;
+        text-align: center;
+        flex-shrink: 0;
+      }
+
+      .barcode-wrapper {
+        text-align: center;
+        margin: 6px auto 8px auto;
+        height: ${layout.barcodeHeight}px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        flex-shrink: 0;
+      }
+
+      .barcode-img {
+        height: ${layout.barcodeHeight}px;
+        max-width: 90%;
+      }
+
+      .address-box {
+        border: ${layout.borderWidthPx}px solid #000;
+        padding: ${layout.paddingPx}px;
+        margin-bottom: ${layout.sectionSpacing}px;
+        height: ${layout.toAddressBoxHeight}px;
+        overflow: hidden;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+      }
+
+      .to-name {
+        font-weight: bold;
+        font-size: ${layout.baseFontSize}px;
+        margin-bottom: 2px;
+        line-height: ${layout.lineHeight};
+      }
+
+      .address-line {
+        font-size: ${layout.baseFontSize}px;
+        line-height: ${layout.lineHeight};
+        margin-bottom: 1px;
+      }
+
+      .details-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: ${layout.sectionSpacing}px;
+        margin-bottom: ${layout.sectionSpacing}px;
+        flex-shrink: 0;
+      }
+
+      .detail-box {
+        border: ${layout.borderWidthPx}px solid #000;
+        padding: ${layout.paddingPx}px;
+        height: ${layout.detailBoxHeight}px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+      }
+
+      .detail-title {
+        font-weight: bold;
+        font-size: ${layout.baseFontSize}px;
+        margin-bottom: 2px;
+        line-height: ${layout.lineHeight};
+      }
+
+      .detail-line {
+        font-size: ${layout.smallFontSize}px;
+        line-height: ${layout.lineHeight};
+        margin-bottom: 1px;
+      }
+
+      .product-section {
+        border: ${layout.borderWidthPx}px solid #000;
+        padding: ${layout.paddingPx}px;
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .product-title {
+        font-weight: bold;
+        font-size: ${layout.baseFontSize}px;
+        margin-bottom: 2px;
+        line-height: ${layout.lineHeight};
+        flex-shrink: 0;
+      }
+
+      .product-list {
+        font-size: ${layout.smallFontSize}px;
+        line-height: ${layout.lineHeight};
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        flex: 1;
+        overflow: hidden;
+        white-space: pre-line;
+      }
+    `
 
     return `
     <!DOCTYPE html>
@@ -620,171 +792,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
         <title>Print Label - ${formattedOrder.id}</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
         <style>
-          @media print {
-            @page {
-              size: ${layout.templateWidthPt / 72}in ${layout.templateHeightPt / 72}in;
-              margin: 0;
-            }
-            body {
-              margin: 0 !important;
-              padding: 0 !important;
-              width: ${layout.templateWidth}px !important;
-              height: ${layout.templateHeight}px !important;
-              max-height: ${layout.templateHeight}px !important;
-              overflow: hidden !important;
-            }
-            .container {
-              width: 100% !important;
-              height: 100% !important;
-              page-break-after: always;
-              overflow: hidden !important;
-              box-sizing: border-box;
-              padding: ${layout.paddingPx}px !important;
-              border: 0 !important;
-            }
-          }
-
-          * {
-            box-sizing: border-box;
-          }
-
-          html, body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            font-size: ${layout.baseFontSize}px;
-            line-height: ${layout.lineHeight};
-            font-weight: normal;
-            letter-spacing: ${layout.letterSpacing};
-          }
-
-          .container {
-            width: ${layout.templateWidth}px;
-            height: ${layout.templateHeight}px;
-            margin: 0 auto;
-            padding: ${layout.paddingPx}px;
-            box-sizing: border-box;
-            position: relative;
-            border: 0;
-            display: flex;
-            flex-direction: column;
-          }
-
-          .header {
-            font-size: ${layout.baseFontSize}px;
-            font-weight: normal;
-            margin-bottom: 4px;
-            text-align: left;
-            flex-shrink: 0;
-          }
-
-          .order-id {
-            font-size: ${layout.baseFontSize}px;
-            font-weight: normal;
-            margin-bottom: 6px;
-            text-align: center;
-            flex-shrink: 0;
-          }
-
-          .barcode-wrapper {
-            text-align: center;
-            margin: 6px auto 8px auto;
-            height: ${layout.barcodeHeight}px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            flex-shrink: 0;
-          }
-
-          .barcode-img {
-            height: ${layout.barcodeHeight}px;
-            max-width: 90%;
-          }
-
-          .address-box {
-            border: ${layout.borderWidthPx}px solid #000;
-            padding: ${layout.paddingPx}px;
-            margin-bottom: ${layout.sectionSpacing}px;
-            height: ${layout.toAddressBoxHeight}px;
-            overflow: hidden;
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-          }
-
-          .to-name {
-            font-weight: bold;
-            font-size: ${layout.baseFontSize}px;
-            margin-bottom: 2px;
-            line-height: ${layout.lineHeight};
-          }
-
-          .address-line {
-            font-size: ${layout.baseFontSize}px;
-            line-height: ${layout.lineHeight};
-            margin-bottom: 1px;
-          }
-
-          .details-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: ${layout.sectionSpacing}px;
-            margin-bottom: ${layout.sectionSpacing + 2}px;
-            flex-shrink: 0;
-          }
-
-          .detail-box {
-            border: ${layout.borderWidthPx}px solid #000;
-            padding: ${layout.paddingPx}px;
-            height: ${layout.detailBoxHeight}px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-          }
-
-          .detail-title {
-            font-weight: bold;
-            font-size: ${layout.baseFontSize}px;
-            margin-bottom: 2px;
-            line-height: ${layout.lineHeight};
-          }
-
-          .detail-line {
-            font-size: ${layout.smallFontSize}px;
-            line-height: ${layout.lineHeight};
-            margin-bottom: 1px;
-          }
-
-          .product-section {
-            border: ${layout.borderWidthPx}px solid #000;
-            padding: ${layout.paddingPx}px;
-            flex: 1;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            margin-top: ${layout.sectionSpacing}px;
-            min-height: 0;
-          }
-
-          .product-title {
-            font-weight: bold;
-            font-size: ${layout.baseFontSize}px;
-            margin-bottom: 2px;
-            line-height: ${layout.lineHeight};
-            flex-shrink: 0;
-          }
-
-          .product-list {
-            font-size: ${layout.smallFontSize}px;
-            line-height: ${layout.lineHeight};
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            flex: 1;
-            overflow: hidden;
-          }
+          ${unifiedCSS}
         </style>
       </head>
       <body>
@@ -826,10 +834,9 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
             <div class="detail-box">
               <div class="detail-title">Prepaid Order:</div>
               <div class="detail-line">Date: ${formattedOrder.orderDate}</div>
-              <div class="detail-line">Weight:</div>
+              <div class="detail-line">Weight: ${formattedOrder.weight || ""}</div>
               <div class="detail-line">No. of Items: ${formattedOrder.totalItems}</div>
               <div class="detail-line">Source: Instagram</div>
-              <div class="detail-line">Packed By:</div>
             </div>
           </div>
          
@@ -838,10 +845,13 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
             <div class="product-list">
               ${layout.productText}
             </div>
+            <div class="packed-by" style="margin-top: auto; padding-top: 4px; font-size: ${layout.smallFontSize}px; line-height: ${layout.lineHeight};">
+   
+            </div>
           </div>
         </div>
         ${
-          !barcodeDataUrl
+          !barcodeDataUrl && !isBulk
             ? `
         <script>
           window.onload = function() {
@@ -865,6 +875,27 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
       </body>
     </html>
   `
+  }
+
+  // SINGLE PRINT CONTENT GENERATOR - Uses unified system
+  const generatePrintContent = (layout: UnifiedLayoutData, barcodeDataUrl = ""): string => {
+    return generateUnifiedPrintContent(layout, barcodeDataUrl, false)
+  }
+
+  // Add this function after the generatePrintContent function
+  const ensureExactPrintSize = (printWindow: Window | null) => {
+    if (!printWindow) return
+
+    // Add script to ensure exact sizing
+    const sizeScript = document.createElement("script")
+    sizeScript.textContent = `
+      window.onbeforeprint = function() {
+        const style = document.createElement('style');
+        style.textContent = '@page { size: exact; }';
+        document.head.appendChild(style);
+      };
+    `
+    printWindow.document.head.appendChild(sizeScript)
   }
 
   // IMPROVED PDF GENERATOR with better alignment
@@ -1016,7 +1047,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
       orderYPos += layout.smallFontSize * layout.lineHeight
       doc.text("Source: Instagram", rightColX + layout.paddingPt, orderYPos)
       orderYPos += layout.smallFontSize * layout.lineHeight
-      doc.text("Packed By:", rightColX + layout.paddingPt, orderYPos)
+      // Remove the "Packed By:" line from here
 
       yPos += layout.detailBoxHeight + layout.sectionSpacing + 2 // Extra spacing before product section
 
@@ -1043,6 +1074,13 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
           productYPos += layout.smallFontSize * layout.lineHeight
         }
       })
+
+      // After adding all product lines, add Packed By at the bottom
+      if (productYPos < layout.templateHeightPt - layout.marginPt - layout.paddingPt - 15) {
+        productYPos = layout.templateHeightPt - layout.marginPt - layout.paddingPt - 10
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(layout.smallFontSize)
+      }
 
       // Save with exact same filename format as original
       doc.save(`bill_${selectedTemplate?.name || "default"}_${billId}_${new Date().toISOString().split("T")[0]}.pdf`)
@@ -1211,13 +1249,11 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
         doc.text(`No. of Items: ${layout.formattedOrder.totalItems}`, rightColX + layout.paddingPt, orderYPos)
         orderYPos += layout.smallFontSize * layout.lineHeight
         doc.text("Source: Instagram", rightColX + layout.paddingPt, orderYPos)
-        orderYPos += layout.smallFontSize * layout.lineHeight
-        doc.text("Packed By: ", rightColX + layout.paddingPt, orderYPos)
+        // Remove the "Packed By:" line from here
         yPos += layout.detailBoxHeight + layout.sectionSpacing + 2 // Extra spacing before product section
-       
 
         // Products section with proper spacing
-        const remainingHeight = layout.templateWidthPt - yPos - layout.marginPt
+        const remainingHeight = layout.templateHeightPt - yPos - layout.marginPt
         doc.setLineWidth(layout.borderWidthPt)
         doc.rect(layout.marginPt, yPos, layout.templateWidthPt - 2 * layout.marginPt, remainingHeight)
 
@@ -1239,6 +1275,12 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
             productYPos += layout.smallFontSize * layout.lineHeight
           }
         })
+        // After adding all product lines, add Packed By at the bottom
+        if (productYPos < layout.templateHeightPt - layout.marginPt - layout.paddingPt - 15) {
+          productYPos = layout.templateHeightPt - layout.marginPt - layout.paddingPt - 10
+          doc.setFont("helvetica", "normal")
+          doc.setFontSize(layout.smallFontSize)
+        }
       }
 
       // Save the PDF
@@ -1290,7 +1332,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
         },
         isPrepaid: true,
         orderDate: `${responseOrder.bill_details.date}, ${responseOrder.bill_details.time}`,
-        shipVia: responseOrder.shipping_details?.method_name || "Standard Shipping",
+        shipVia: responseOrder.shipping_details?.method_name || "ST Courier",
         products: responseOrder.product_details.map((product) => ({
           name: product.productName,
           quantity: product.quantity,
@@ -1322,6 +1364,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
       printWindow.document.open()
       printWindow.document.write(printContent)
       printWindow.document.close()
+      ensureExactPrintSize(printWindow)
 
       // Auto-download bill data as PDF after successful print setup
       setTimeout(() => {
@@ -1365,6 +1408,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
       printWindow.document.open()
       printWindow.document.write(printContent)
       printWindow.document.close()
+      ensureExactPrintSize(printWindow)
 
       printWindow.onload = () => {
         setTimeout(() => {
@@ -1393,214 +1437,201 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
     }
   }
 
-  // IMPROVED BULK PRINT CONTENT GENERATOR with perfect box alignment
+  // FIXED BULK PRINT CONTENT GENERATOR - Uses IDENTICAL unified system as single print
   const generateBulkPrintContent = (bills: BillResponseType[]) => {
     // Use first bill to determine template settings (all bills use same template)
     const firstLayout = generateUnifiedLayoutData(bills[0], selectedTemplate, previewFromAddress)
 
-    const styles = `
-     <style>
-       @media print {
-         @page {
-           size: ${firstLayout.templateWidthPt / 72}in ${firstLayout.templateHeightPt / 72}in;
-           margin: 0;
-         }
-         body {
-           margin: 0 !important;
-           padding: 0 !important;
-           width: ${firstLayout.templateWidth}px !important;
-           height: ${firstLayout.templateHeight}px !important;
-           max-height: ${firstLayout.templateHeight}px !important;
-           overflow: hidden !important;
-         }
-         .page-container {
-           width: 100% !important;
-           height: 100% !important;
-           page-break-after: always;
-           overflow: hidden !important;
-           box-sizing: border-box;
-         }
-         .container {
-           width: 100% !important;
-           height: 100% !important;
-           page-break-after: always;
-           overflow: hidden !important;
-           box-sizing: border-box;
-           padding: ${firstLayout.paddingPx}px !important;
-           border: 0 !important;
-           display: flex !important;
-           flex-direction: column !important;
-         }
-       }
-       
-       * {
-         box-sizing: border-box;
-       }
-       
-       html, body {
+    // IDENTICAL CSS as single print - using unified system
+    const unifiedCSS = `
+     @media print {
+       @page {
+         size: ${firstLayout.templateWidthPt / 72}in ${firstLayout.templateHeightPt / 72}in;
          margin: 0;
-         padding: 0;
-         font-family: Arial, sans-serif;
-         font-size: ${firstLayout.baseFontSize}px;
-         line-height: ${firstLayout.lineHeight};
-         font-weight: normal;
-         letter-spacing: ${firstLayout.letterSpacing};
        }
-       
+       body {
+         margin: 0 !important;
+         padding: 0 !important;
+         width: ${firstLayout.templateWidth}px !important;
+         height: ${firstLayout.templateHeight}px !important;
+         max-height: ${firstLayout.templateHeight}px !important;
+         overflow: hidden !important;
+       }
        .page-container {
-         width: ${firstLayout.templateWidth}px;
-         height: ${firstLayout.templateHeight}px;
+         width: 100% !important;
+         height: 100% !important;
          page-break-after: always;
-         margin: 0 auto;
+         overflow: hidden !important;
          box-sizing: border-box;
-         position: relative;
        }
-       
        .container {
-         width: ${firstLayout.templateWidth}px;
-         height: ${firstLayout.templateHeight}px;
-         margin: 0 auto;
-         padding: ${firstLayout.paddingPx}px;
+         width: 100% !important;
+         height: 100% !important;
+         page-break-after: always;
+         overflow: hidden !important;
          box-sizing: border-box;
-         position: relative;
-         border: 0;
-         display: flex;
-         flex-direction: column;
+         padding: ${firstLayout.paddingPx}px !important;
+         border: 0 !important;
+         display: flex !important;
+         flex-direction: column !important;
        }
-       
-       .header {
-         font-size: ${firstLayout.baseFontSize}px;
-         font-weight: normal;
-         margin-bottom: 4px;
-         text-align: left;
-         flex-shrink: 0;
-       }
-       
-       .order-id {
-         font-size: ${firstLayout.baseFontSize}px;
-         font-weight: normal;
-         margin-bottom: 6px;
-         text-align: center;
-         flex-shrink: 0;
-       }
-       
-       .barcode-wrapper {
-         text-align: center;
-         margin: 6px auto 8px auto;
-         height: ${firstLayout.barcodeHeight}px;
-         display: flex;
-         justify-content: center;
-         align-items: center;
-         width: 100%;
-         flex-shrink: 0;
-       }
-       
-       .barcode-img {
-         max-height: 100%;
-         max-width: 90%;
-       }
-       
-       .address-box {
-         border: ${firstLayout.borderWidthPx}px solid #000;
-         padding: ${firstLayout.paddingPx}px;
-         margin-bottom: ${firstLayout.sectionSpacing}px;
-         height: ${firstLayout.toAddressBoxHeight}px;
-         overflow: hidden;
-         flex-shrink: 0;
-         display: flex;
-         flex-direction: column;
-         justify-content: flex-start;
-       }
-       
-       .to-name {
-         font-weight: bold;
-         font-size: ${firstLayout.baseFontSize}px;
-         margin-bottom: 2px;
-         line-height: ${firstLayout.lineHeight};
-         white-space: nowrap;
-         overflow: hidden;
-         text-overflow: ellipsis;
-       }
-       
-       .address-line {
-         font-size: ${firstLayout.baseFontSize}px;
-         line-height: ${firstLayout.lineHeight};
-         margin-bottom: 1px;
-         white-space: nowrap;
-         overflow: hidden;
-         text-overflow: ellipsis;
-       }
-       
-       .details-grid {
-         display: grid;
-         grid-template-columns: 1fr 1fr;
-         gap: ${firstLayout.sectionSpacing}px;
-         margin-bottom: ${firstLayout.sectionSpacing}px;
-         flex-shrink: 0;
-       }
-       
-       .detail-box {
-         border: ${firstLayout.borderWidthPx}px solid #000;
-         padding: ${firstLayout.paddingPx}px;
-         height: ${firstLayout.detailBoxHeight}px;
-         overflow: hidden;
-         display: flex;
-         flex-direction: column;
-         justify-content: flex-start;
-       }
-       
-       .detail-title {
-         font-weight: bold;
-         font-size: ${firstLayout.baseFontSize}px;
-         margin-bottom: 2px;
-         line-height: ${firstLayout.lineHeight};
-       }
-       
-       .detail-line {
-         font-size: ${firstLayout.smallFontSize}px;
-         line-height: ${firstLayout.lineHeight};
-         margin-bottom: 1px;
-         white-space: nowrap;
-         overflow: hidden;
-         text-overflow: ellipsis;
-       }
+     }
+     
+     * {
+       box-sizing: border-box;
+     }
+     
+     html, body {
+       margin: 0;
+       padding: 0;
+       font-family: Arial, sans-serif;
+       font-size: ${firstLayout.baseFontSize}px;
+       line-height: ${firstLayout.lineHeight};
+       font-weight: normal;
+       letter-spacing: ${firstLayout.letterSpacing};
+     }
+     
+     .page-container {
+       width: ${firstLayout.templateWidth}px;
+       height: ${firstLayout.templateHeight}px;
+       page-break-after: always;
+       margin: 0 auto;
+       box-sizing: border-box;
+       position: relative;
+     }
+     
+     .container {
+       width: ${firstLayout.templateWidth}px;
+       height: ${firstLayout.templateHeight}px;
+       margin: 0 auto;
+       padding: ${firstLayout.paddingPx}px;
+       box-sizing: border-box;
+       position: relative;
+       border: 0;
+       display: flex;
+       flex-direction: column;
+     }
+     
+     .header {
+       font-size: ${firstLayout.baseFontSize}px;
+       font-weight: normal;
+       margin-bottom: 4px;
+       text-align: left;
+       flex-shrink: 0;
+     }
+     
+     .order-id {
+       font-size: ${firstLayout.baseFontSize}px;
+       font-weight: normal;
+       margin-bottom: 6px;
+       text-align: center;
+       flex-shrink: 0;
+     }
+     
+     .barcode-wrapper {
+       text-align: center;
+       margin: 6px auto 8px auto;
+       height: ${firstLayout.barcodeHeight}px;
+       display: flex;
+       justify-content: center;
+       align-items: center;
+       width: 100%;
+       flex-shrink: 0;
+     }
+     
+     .barcode-img {
+       height: ${firstLayout.barcodeHeight}px;
+       max-width: 90%;
+     }
+     
+     .address-box {
+       border: ${firstLayout.borderWidthPx}px solid #000;
+       padding: ${firstLayout.paddingPx}px;
+       margin-bottom: ${firstLayout.sectionSpacing}px;
+       height: ${firstLayout.toAddressBoxHeight}px;
+       overflow: hidden;
+       flex-shrink: 0;
+       display: flex;
+       flex-direction: column;
+       justify-content: flex-start;
+     }
+     
+     .to-name {
+       font-weight: bold;
+       font-size: ${firstLayout.baseFontSize}px;
+       margin-bottom: 2px;
+       line-height: ${firstLayout.lineHeight};
+     }
+     
+     .address-line {
+       font-size: ${firstLayout.baseFontSize}px;
+       line-height: ${firstLayout.lineHeight};
+       margin-bottom: 1px;
+     }
+     
+     .details-grid {
+       display: grid;
+       grid-template-columns: 1fr 1fr;
+       gap: ${firstLayout.sectionSpacing}px;
+       margin-bottom: ${firstLayout.sectionSpacing}px;
+       flex-shrink: 0;
+     }
+     
+     .detail-box {
+       border: ${firstLayout.borderWidthPx}px solid #000;
+       padding: ${firstLayout.paddingPx}px;
+       height: ${firstLayout.detailBoxHeight}px;
+       overflow: hidden;
+       display: flex;
+       flex-direction: column;
+       justify-content: flex-start;
+     }
+     
+     .detail-title {
+       font-weight: bold;
+       font-size: ${firstLayout.baseFontSize}px;
+       margin-bottom: 2px;
+       line-height: ${firstLayout.lineHeight};
+     }
+     
+     .detail-line {
+       font-size: ${firstLayout.smallFontSize}px;
+       line-height: ${firstLayout.lineHeight};
+       margin-bottom: 1px;
+     }
 
-       .product-section {
-         border: ${firstLayout.borderWidthPx}px solid #000;
-         padding: ${firstLayout.paddingPx}px;
-         flex: 1;
-         overflow: hidden;
-         display: flex;
-         flex-direction: column;
-         min-height: 0;
-         margin-top: ${firstLayout.sectionSpacing + 2}px;
-       }
+     .product-section {
+       border: ${firstLayout.borderWidthPx}px solid #000;
+       padding: ${firstLayout.paddingPx}px;
+       flex: 1;
+       overflow: hidden;
+       display: flex;
+       flex-direction: column;
+       min-height: 0;
+     }
 
-       .product-title {
-         font-weight: bold;
-         font-size: ${firstLayout.baseFontSize}px;
-         margin-bottom: 2px;
-         line-height: ${firstLayout.lineHeight};
-         flex-shrink: 0;
-       }
+     .product-title {
+       font-weight: bold;
+       font-size: ${firstLayout.baseFontSize}px;
+       margin-bottom: 2px;
+       line-height: ${firstLayout.lineHeight};
+       flex-shrink: 0;
+     }
 
-       .product-list {
-         font-size: ${firstLayout.smallFontSize}px;
-         line-height: ${firstLayout.lineHeight};
-         word-wrap: break-word;
-         overflow-wrap: break-word;
-         flex: 1;
-         overflow: hidden;
-         display: -webkit-box;
-         -webkit-box-orient: vertical;
-         -webkit-line-clamp: 4;
-       }
-     </style>
+     .product-list {
+       font-size: ${firstLayout.smallFontSize}px;
+       line-height: ${firstLayout.lineHeight};
+       word-wrap: break-word;
+       overflow-wrap: break-word;
+       flex: 1;
+       overflow: hidden;
+       white-space: pre-line;
+     }
    `
 
-    // Generate HTML for all bills using IMPROVED layout system
+    // Generate HTML for all bills using IDENTICAL layout system as single print
     const generateLabelHTML = (bill: BillResponseType) => {
-      // Generate EXACT same layout data as print preview for each bill
+      // Generate EXACT same layout data as single print for each bill
       const layout = generateUnifiedLayoutData(bill, selectedTemplate, previewFromAddress)
 
       return `
@@ -1642,14 +1673,13 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
              <div class="detail-line">Weight: ${bill.shipping_details?.weight || ""}</div>
              <div class="detail-line">No. of Items: ${layout.formattedOrder.totalItems}</div>
              <div class="detail-line">Source: Instagram</div>
-             <div class="detail-line">Packed By: </div>
            </div>
          </div>
          
          <div class="product-section">
            <div class="product-title">Products:</div>
-           <div class="product-list">
-             ${layout.productText}
+           <div class="product-list">${layout.productText}</div>
+           <div class="packed-by" style="margin-top: auto; padding-top: 4px; font-size: ${firstLayout.smallFontSize}px; line-height: ${firstLayout.lineHeight};">
            </div>
          </div>
        </div>
@@ -1659,7 +1689,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
 
     const billsHTML = bills.map((bill) => generateLabelHTML(bill)).join("")
 
-    // Create barcode initialization code for each bill using UNIFIED settings
+    // Create barcode initialization code for each bill using IDENTICAL settings as single print
     const barcodeInitScript = bills
       .map((bill) => {
         const layout = generateUnifiedLayoutData(bill, selectedTemplate, previewFromAddress)
@@ -1680,8 +1710,10 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
      <html lang="en">
        <head>
          <meta charset="UTF-8">
-         <title>Print Bills</title>
-         ${styles}
+         <title>Bulk Print Bills - Perfect Alignment</title>
+         <style>
+           ${unifiedCSS}
+         </style>
          <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
        </head>
        <body>
@@ -1917,7 +1949,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
           </div>
 
           <div className="border-t border-gray-200 pt-6">
-            <h2 className="text-lg font-semibold mb-4">Print Options</h2>
+            <h2 className="text-lg font-semibold mb-4">Print Options - Perfect Single & Bulk Alignment</h2>
 
             <div className="mb-6">
               <h3 className="font-medium text-gray-700 mb-2">Print Single Label</h3>
@@ -1985,7 +2017,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
             </div>
 
             <div>
-              <h3 className="font-medium text-gray-700 mb-2">Bulk Printing</h3>
+              <h3 className="font-medium text-gray-700 mb-2">Bulk Printing - Fixed Alignment</h3>
               <div className="flex items-center">
                 <div className="mr-4">
                   <span className="text-sm text-gray-600">You have </span>
@@ -2067,7 +2099,8 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
   return (
     <div className="container mx-auto px-4 py-6 max-w-5xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Shipping Label Management</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Perfect Shipping Label Management</h1>
+        <p className="text-gray-600 mt-1">Single & Bulk Print with Identical Perfect Alignment</p>
         {step === 2 && (
           <button className="mt-2 text-blue-600 flex items-center" onClick={() => setStep(1)}>
             <ArrowRight className="w-4 h-4 mr-1 transform rotate-180" />

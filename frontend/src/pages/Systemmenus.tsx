@@ -52,89 +52,89 @@ const InstaxBotSystemMenu: React.FC = () => {
   };
 
   // Save system menu function with tenent ID
-  const handleSaveSystemMenu = async () => {
-    // For demonstration, we'll use a mock tenentId since localStorage is not available
-    const tenentId = 'demo-tenant-123';
-    console.log('Using demo tenentId:', tenentId);
+const handleSaveSystemMenu = async () => {
+  // Get tenentId from localStorage
+  const tenentId = localStorage.getItem('tenentid');
+  console.log('Retrieved tenentId from localStorage:', tenentId);
+  
+  if (!tenentId) {
+    setErrorMessage('Tenent ID not found. Please log in again.');
+    setTimeout(() => setErrorMessage(''), 5000);
+    return;
+  }
+
+  // Validate payloads before saving
+  const invalidPayloads = payloads.filter(item => !item.title.trim() || !item.value.trim());
+  if (invalidPayloads.length > 0) {
+    setErrorMessage('Please fill in all title and value fields before saving.');
+    setTimeout(() => setErrorMessage(''), 5000);
+    return;
+  }
+
+  setLoading(true);
+  setSuccessMessage('');
+  setErrorMessage('');
+
+  try {
+    // No need to transform - payloads already match backend format
+    const requestBody = {
+      payloads: payloads.map(item => ({
+        id: item.id,
+        type: item.type,
+        title: item.title.trim(),
+        value: item.value.trim()
+      })),
+      tenentId: tenentId
+    };
+
+    console.log('Sending request with payloads:', requestBody);
+
+    const response = await fetch('https://app.instaxbot.com/api/systemmenusroute/save-system-menu', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    // Check if response is actually JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Server returned non-JSON response. Check if the API endpoint exists.');
+    }
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      setSuccessMessage('System menu saved successfully');
+      console.log('Saved data:', data.data);
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+    } else {
+      setErrorMessage(data.message || 'Failed to save system menu');
+      setTimeout(() => setErrorMessage(''), 5000);
+    }
+
+  } catch (error) {
+    console.error('Error saving system menu:', error);
     
-    if (!tenentId) {
-      setErrorMessage('Tenent ID not found. Please log in again.');
-      setTimeout(() => setErrorMessage(''), 5000);
-      return;
+    // More specific error handling with proper type checking
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      setErrorMessage('Network error. Please check if the server is running and try again.');
+    } else if (error instanceof Error && error.message.includes('non-JSON response')) {
+      setErrorMessage('API endpoint not found. Please check the server configuration.');
+    } else if (error instanceof Error) {
+      setErrorMessage(`Error: ${error.message}`);
+    } else {
+      setErrorMessage('Network error. Please check your connection and try again.');
     }
-
-    // Validate payloads before saving
-    const invalidPayloads = payloads.filter(item => !item.title.trim() || !item.value.trim());
-    if (invalidPayloads.length > 0) {
-      setErrorMessage('Please fill in all title and value fields before saving.');
-      setTimeout(() => setErrorMessage(''), 5000);
-      return;
-    }
-
-    setLoading(true);
-    setSuccessMessage('');
-    setErrorMessage('');
-
-    try {
-      // No need to transform - payloads already match backend format
-      const requestBody = {
-        payloads: payloads.map(item => ({
-          id: item.id,
-          type: item.type,
-          title: item.title.trim(),
-          value: item.value.trim()
-        })),
-        tenentId: tenentId
-      };
-
-      console.log('Sending request with payloads:', requestBody);
-
-      const response = await fetch('https://app.instaxbot.com/api/systemmenusroute/save-system-menu', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      // Check if response is actually JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server returned non-JSON response. Check if the API endpoint exists.');
-      }
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setSuccessMessage('System menu saved successfully');
-        console.log('Saved data:', data.data);
-        setTimeout(() => {
-          setSuccessMessage('');
-        }, 3000);
-      } else {
-        setErrorMessage(data.message || 'Failed to save system menu');
-        setTimeout(() => setErrorMessage(''), 5000);
-      }
-
-    } catch (error) {
-      console.error('Error saving system menu:', error);
-      
-      // More specific error handling with proper type checking
-      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        setErrorMessage('Network error. Please check if the server is running and try again.');
-      } else if (error instanceof Error && error.message.includes('non-JSON response')) {
-        setErrorMessage('API endpoint not found. Please check the server configuration.');
-      } else if (error instanceof Error) {
-        setErrorMessage(`Error: ${error.message}`);
-      } else {
-        setErrorMessage('Network error. Please check your connection and try again.');
-      }
-      
-      setTimeout(() => setErrorMessage(''), 5000);
-    } finally {
-      setLoading(false);
-    }
-  };
+    
+    setTimeout(() => setErrorMessage(''), 5000);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">

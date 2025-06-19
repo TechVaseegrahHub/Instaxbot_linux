@@ -98,7 +98,7 @@ const tenantVectorDBs = require('./vectorDBState');
 // Configuration
 //global.tenantVectorDBs = {};
 const config = require("../services/config");
-const appUrl = process.env.APP_URL || 'https://app.instaxbot.com';
+const appUrl = process.env.APP_URL || 'https://8420-117-247-96-193.ngrok-free.app';
 const regex = /\w+/g;
 const { Worker } = require('worker_threads');
 const { clients } = require('./messageRoutes');
@@ -4921,7 +4921,7 @@ async function handlePayload(payload, senderID,tenentId,recipientID,title,userAc
                       {
                         type: "web_url",
                         title: "View Our Products",
-                        url: `https://app.instaxbot.com/productcatalog?tenentId=${tenentId}&securityaccessToken=${securityaccessToken}`
+                        url: `https://8420-117-247-96-193.ngrok-free.app/productcatalog?tenentId=${tenentId}&securityaccessToken=${securityaccessToken}`
                       }
                       
                     ],

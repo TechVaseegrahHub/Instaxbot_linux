@@ -18,7 +18,7 @@ export default function WelcomeTemplate() {
     
     try {
       const tenentId = localStorage.getItem('tenentid');
-      const response = await axios.post("https://app.instaxbot.com/api/templatesroute/welcome", {
+      const response = await axios.post("https://8420-117-247-96-193.ngrok-free.app/api/templatesroute/welcome", {
         message, tenentId
       });
       Swal.fire({

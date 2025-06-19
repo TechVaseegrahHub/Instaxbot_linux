@@ -196,7 +196,7 @@ router.get('/bulkPrinting', async (req, res) => {
     const pendingOrders = await Order.find({
       tenentId: tenentId,
       print_status: 'PENDING',
-      status: { $in: ['paid', 'shipped', 'processing', 'PACKED'] }
+      status: { $in: ['processing', 'paid', 'shipped', 'delivered','completed', 'CREATED', 'PENDING', 'PROCESSING', 'PAID', 'SHIPPED', 'DELIVERED','COMPLETED','HOLDED'] }
     }).limit(limit).sort({ created_at: 1 });
 
     console.log(`Found ${pendingOrders.length} pending orders for tenant: ${tenentId}`);
@@ -246,7 +246,7 @@ async function getRemainingPendingCount(tenentId) {
     const count = await Order.countDocuments({
       tenentId: tenentId,
       print_status: 'PENDING',
-      status: { $in: ['paid', 'shipped', 'processing', 'PACKED'] }
+      status: { $in: ['processing', 'paid', 'shipped', 'delivered','completed', 'CREATED', 'PENDING', 'PROCESSING', 'PAID', 'SHIPPED', 'DELIVERED','COMPLETED','HOLDED'] }
     });
     console.log(`Counted ${count} remaining pending orders for tenant: ${tenentId}`);
     return count;
@@ -473,7 +473,7 @@ router.get('/pending-count', async (req, res) => {
     const count = await Order.countDocuments({
       tenentId: tenentId,
       print_status: 'PENDING',
-      status: { $in: ['paid', 'shipped', 'processing', 'PACKED'] }
+      status: { $in: ['processing', 'paid', 'shipped', 'delivered','completed', 'CREATED', 'PENDING', 'PROCESSING', 'PAID', 'SHIPPED', 'DELIVERED','COMPLETED','HOLDED'] }
     });
 
     console.log(`Pending print count for tenant ${tenentId}: ${count} (out of ${totalOrders} total orders)`);
@@ -848,10 +848,10 @@ router.post('/reset-print-status', async (req, res) => {
     console.log(`Resetting print status for tenant: ${tenentId}, days back: ${daysBack}`);
 
     // ✅ UPDATE: Include 'PACKED' and 'PRINTED' in valid statuses
-    const validStatuses = ['paid', 'shipped', 'processing', 'completed', 'PACKED', 'PRINTED'];
+    const validStatuses = ['processing', 'paid', 'shipped', 'delivered', 'completed', 'CREATED', 'PENDING', 'PROCESSING', 'PAID', 'SHIPPED', 'DELIVERED', 'COMPLETED','HOLDED'];
     const orderStatuses = status ?
       (Array.isArray(status) ? status.filter(s => validStatuses.includes(s)) : [status].filter(s => validStatuses.includes(s)))
-      : ['paid', 'shipped', 'processing', 'PACKED'];
+      : ['processing', 'paid', 'shipped', 'delivered', 'completed', 'CREATED', 'PENDING', 'PROCESSING', 'PAID', 'SHIPPED', 'DELIVERED','COMPLETED','HOLDED'];
 
     if (orderStatuses.length === 0) {
       return res.status(400).json({ error: 'No valid order statuses provided' });

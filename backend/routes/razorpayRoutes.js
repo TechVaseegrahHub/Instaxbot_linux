@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 const router = express.Router();
 const LongToken = require('../models/LongToken');
-const BASE_URL = 'https://app.instaxbot.com';
+const BASE_URL = 'https://8420-117-247-96-193.ngrok-free.app';
 
 // SMS Configuration
 const SMS_CONFIG = {

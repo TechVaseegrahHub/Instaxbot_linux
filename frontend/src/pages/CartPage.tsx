@@ -150,7 +150,7 @@ const CartPage: React.FC = () => {
     if (tenentId) localStorage.setItem('tenentId', tenentId);
   }, [tenentId]);
 
-  const appUrl = process.env.REACT_APP_API_URL || 'https://app.instaxbot.com';
+  const appUrl = process.env.REACT_APP_API_URL || 'https://8420-117-247-96-193.ngrok-free.app';
 
   // Verify the security token and get senderId
   useEffect(() => {

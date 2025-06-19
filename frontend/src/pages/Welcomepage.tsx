@@ -22,7 +22,7 @@ const MAX_BODY_LENGTH = 1024;
 const MAX_WORKFLOWS = 3;
 
 // Base URL for API requests
-const API_BASE_URL = process.env.REACT_APP_API_URL ||'https://app.instaxbot.com';
+const API_BASE_URL = process.env.REACT_APP_API_URL ||'https://8420-117-247-96-193.ngrok-free.app';
 
 const InstaxBot: React.FC = () => {
   const [messageTemplate, setMessageTemplate] = useState<MessageTemplateProps>({

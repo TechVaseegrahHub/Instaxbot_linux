@@ -183,7 +183,7 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
 
       const formData = prepareFormData();
       const response = await axios.post(
-        'https://app.instaxbot.com/api/templatesroute/product-details/update',
+        'https://8420-117-247-96-193.ngrok-free.app/api/templatesroute/product-details/update',
         formData,
         {
           headers: {
@@ -235,7 +235,7 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
     try {
       const formData = prepareFormData();
       const response = await axios.post(
-        'https://app.instaxbot.com/api/templatesroute/product-details', 
+        'https://8420-117-247-96-193.ngrok-free.app/api/templatesroute/product-details', 
         formData, 
         {
           headers: {

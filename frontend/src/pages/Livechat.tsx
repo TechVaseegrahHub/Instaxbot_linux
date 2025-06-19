@@ -606,7 +606,7 @@ export default function LiveChat() {
     };
     wsService.onConnect(handleConnect);
     if (!wsService.isConnected()) {
-      const appUrl = process.env.REACT_APP_API_URL || 'https://app.instaxbot.com';
+      const appUrl = process.env.REACT_APP_API_URL || 'https://8420-117-247-96-193.ngrok-free.app';
       wsService.connect(appUrl);
     }
     return () => {

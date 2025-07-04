@@ -55,7 +55,7 @@ router.get('/auth/instagram/callback',async (req, res) => {
           client_secret: process.env.CLIENT_SECRET,
   
           grant_type: 'authorization_code',
-          redirect_uri: 'https://8420-117-247-96-193.ngrok-free.app/api/instagram_authroute/auth/instagram/callback',
+          redirect_uri: 'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/instagram_authroute/auth/instagram/callback',
           
           code: authCode
         });
@@ -419,7 +419,7 @@ router.get('/auth/instagram/callback',async (req, res) => {
   
     // Generate a unique confirmation code and URL to track the deletion status
     const confirmationCode = 'abc123'; // Generate a unique code for the deletion request
-    const statusUrl = `https://8420-117-247-96-193.ngrok-free.app/api/instagram_authroute/auth/instagram/data_deletion?id=${confirmationCode}`;
+    const statusUrl = `https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/instagram_authroute/auth/instagram/data_deletion?id=${confirmationCode}`;
   
     // Send the response with the tracking URL and confirmation code
     res.json({

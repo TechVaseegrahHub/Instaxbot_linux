@@ -32,7 +32,7 @@ const ShippingPage: React.FC = () => {
 
   // Hardcoded tenant ID - in a real app, this would come from authentication context
   const tenentId = localStorage.getItem('tenentid') || '';
-  const appUrl = process.env.REACT_APP_API_URL || 'https://8420-117-247-96-193.ngrok-free.app';
+  const appUrl = process.env.REACT_APP_API_URL || 'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app';
 
   // Fetch shipping methods
   const fetchShippingMethods = async () => {

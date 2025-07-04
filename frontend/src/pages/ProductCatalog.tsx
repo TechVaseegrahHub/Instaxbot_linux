@@ -31,6 +31,35 @@ interface ProductCatalogProps {
   bypassTokenCheck?: boolean;
 }
 
+// Category Grid Component
+const CategoryGrid: React.FC<{
+  categories: string[];
+  selectedCategory: string | null;
+  onCategorySelect: (category: string) => void;
+}> = ({ categories, selectedCategory, onCategorySelect }) => {
+  if (categories.length === 0) return null;
+
+  return (
+    <div className="mb-6">
+      <div className="flex flex-wrap gap-2 justify-center">
+        {categories.map((category) => (
+          <button
+            key={category}
+            onClick={() => onCategorySelect(category)}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
+              selectedCategory === category
+                ? 'bg-blue-600 text-white shadow-lg'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const ProductCatalog: React.FC<ProductCatalogProps> = ({ bypassTokenCheck = false }) => {
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -45,7 +74,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ bypassTokenCheck = fals
   
   // Define appUrl using useMemo to prevent recreating on every render
   const appUrl = useMemo(() => {
-    return process.env.REACT_APP_API_URL || 'https://8420-117-247-96-193.ngrok-free.app';
+    return process.env.REACT_APP_API_URL || 'https://app.instaxbot.com';
   }, []);
   
   // Create axios instance with useMemo
@@ -350,7 +379,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ bypassTokenCheck = fals
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 pb-24">
+    <div className="container mx-auto px-4 py-6 pb-24">
       {/* Custom CSS for larger toast notifications */}
       <style>{`
         .custom-toast {
@@ -370,15 +399,15 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ bypassTokenCheck = fals
       <ToastContainer />
       
       {/* Header with cart icon */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Product Catalog</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Product Catalog</h1>
         <Link 
           to={`/cart?tenentId=${tenentId}&securityaccessToken=${securityAccessToken}`}
           className="relative p-2"
         >
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
-            className="h-8 w-8 text-gray-700" 
+            className="h-7 w-7 text-gray-700" 
             fill="none" 
             viewBox="0 0 24 24" 
             stroke="currentColor"
@@ -391,32 +420,22 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ bypassTokenCheck = fals
             />
           </svg>
           {cartItemCount > 0 && (
-            <span className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
               {cartItemCount}
             </span>
           )}
         </Link>
       </div>
 
-      {/* Category Navigation */}
-      <div className="flex overflow-x-auto mb-6 space-x-4 pb-2">
-        {categories.map((category) => (
-          <button
-            key={category}
-            onClick={() => setSelectedCategory(category)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 ${
-              selectedCategory === category
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
+      {/* Category Grid Navigation */}
+      <CategoryGrid 
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onCategorySelect={setSelectedCategory}
+      />
 
-      {/* Product Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+     {/* Product Grid - Updated to show 2 products per row */}
+     <div className="grid grid-cols-2 gap-4 max-w-4xl mx-auto">
         {products.map((product) => {
           // Check if product is out of stock
           const isOutOfStock = !product.hasOwnProperty('quantityInStock') || 
@@ -429,7 +448,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ bypassTokenCheck = fals
           return (
             <div 
               key={product.sku} 
-              className={`bg-white rounded-lg shadow-md overflow-hidden transform transition-transform hover:scale-105 
+              className={`bg-white rounded-lg shadow-md overflow-hidden transform transition-transform hover:scale-102 
                           ${isOutOfStock ? 'opacity-70' : ''}`}
             >
               <div className="relative">
@@ -445,28 +464,28 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ bypassTokenCheck = fals
                 {/* Out of stock overlay */}
                 {isOutOfStock && (
                   <div className="absolute inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center">
-                    <span className="bg-red-500 text-white px-3 py-1 rounded-md font-medium">
+                    <span className="bg-red-500 text-white px-3 py-1 rounded-md font-medium text-xs">
                       Out of Stock
                     </span>
                   </div>
                 )}
               </div>
               
-              <div className="p-4">
-                <h3 className="font-semibold text-lg mb-2">{product.productName}</h3>
+              <div className="p-3">
+                <h3 className="font-semibold text-base mb-2 text-gray-800 leading-tight">{product.productName}</h3>
                 
                 {/* Price Options */}
-                <div className="mb-4">
-                  {product.units && product.units.map((unit) => (
-                    <div key={unit.unit} className="text-sm text-gray-600">
-                      {unit.unit}: ₹{parseFloat(unit.price as string).toFixed(2)}
+                <div className="mb-3">
+                  {product.units && product.units.slice(0, 2).map((unit) => (
+                    <div key={unit.unit} className="text-sm text-gray-700 mb-1">
+                      {unit.unit}: <span className="font-medium">₹{parseFloat(unit.price as string).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
                 
                 {/* Stock status indication */}
                 {!isOutOfStock && product.quantityInStock && (
-                  <div className="text-xs text-gray-500 mb-2">
+                  <div className="text-xs text-gray-500 mb-3">
                     {product.quantityInStock} in stock
                   </div>
                 )}
@@ -475,14 +494,14 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ bypassTokenCheck = fals
                 {inCart ? (
                   <div className="flex items-center justify-between border border-gray-300 rounded-md overflow-hidden">
                     <button
-                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium"
+                      className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm"
                       onClick={() => handleUpdateQuantity(product.sku, quantity - 1)}
                     >
                       -
                     </button>
-                    <span className="flex-1 text-center">{quantity}</span>
+                    <span className="flex-1 text-center text-sm font-medium">{quantity}</span>
                     <button
-                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium"
+                      className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm"
                       onClick={() => handleUpdateQuantity(product.sku, quantity + 1)}
                     >
                       +
@@ -491,7 +510,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ bypassTokenCheck = fals
                 ) : (
                   <button
                     onClick={() => handleAddToCart(product.sku)}
-                    className={`w-full py-2 rounded-md transition-colors ${
+                    className={`w-full py-2 rounded-md transition-colors text-sm font-medium ${
                       isOutOfStock 
                         ? 'bg-gray-400 cursor-not-allowed text-gray-100' 
                         : 'bg-blue-600 hover:bg-blue-700 text-white'

@@ -74,7 +74,7 @@ export default function NotificationIcon() {
     wsRef.current = wsService;
 
     wsService.addMessageHandler(handleWebSocketMessage);
-    const wsUrl = `wss://8420-117-247-96-193.ngrok-free.app//ws`;
+    const wsUrl = `wss://d2e0-117-247-96-193.ngrok-free.app//ws`;
   // or for non-secure connections:
   // const wsUrl = `ws://f0c7-117-247-96-193.ngrok-free.app/ws`;
   

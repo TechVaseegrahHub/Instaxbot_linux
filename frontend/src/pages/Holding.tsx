@@ -29,7 +29,7 @@ interface StatusBadgeProps {
 }
 
 // Configuration - Update these URLs to match your backend
-const API_BASE_URL = 'https://8420-117-247-96-193.ngrok-free.app/api'; // Update this to your backend URL
+const API_BASE_URL = 'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api'; // Update this to your backend URL
 const ENDPOINTS = {
   ORDER_DETAILS: `${API_BASE_URL}/holdingroute/details`,
   UPDATE_HOLDING: `${API_BASE_URL}/holdingroute/update-holding`,

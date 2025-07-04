@@ -33,7 +33,7 @@ export default function IcebreakersTemplate() {
 
    try {
      const tenentId = localStorage.getItem('tenentid');
-     const response = await axios.post("https://8420-117-247-96-193.ngrok-free.app/api/templatesroute/Icebreaker", {
+     const response = await axios.post("https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/templatesroute/Icebreaker", {
        questions: Object.values(questions),
        tenentId
      });

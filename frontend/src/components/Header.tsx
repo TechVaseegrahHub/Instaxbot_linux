@@ -32,7 +32,7 @@ const Header = () => {
       const tenentId = localStorage.getItem('tenentid');
       try {
         const response = await axios.get(
-          'https://8420-117-247-96-193.ngrok-free.app/api/usernameroute/username',
+          'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/usernameroute/username',
           { params: { tenentId } }
         );
 
@@ -48,7 +48,7 @@ const Header = () => {
       }
       try {
         const response1 = await axios.get(
-          'https://8420-117-247-96-193.ngrok-free.app/api/mainmoderoute/mainmode',
+          'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/mainmoderoute/mainmode',
           { params: { tenentId } }
         );
 

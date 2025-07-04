@@ -613,7 +613,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
   }
 
   // UNIFIED PRINT CONTENT GENERATOR - Used by both print preview and PDF
-  /*const generatePrintContent = (layout: UnifiedLayoutData, barcodeDataUrl = ""): string => {
+  const generatePrintContent = (layout: UnifiedLayoutData, barcodeDataUrl = ""): string => {
     const { formattedOrder, fromAddress: fromAddr } = layout
 
     return `
@@ -837,7 +837,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
       </body>
     </html>
   `
-  }*/
+  }
 
   // EXACT MATCH PDF GENERATOR - Uses the same layout data as print preview
   const downloadBillDataAsPDF = async (
@@ -1186,846 +1186,431 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
   };
 
   const handlePrintBill = async (billId: string) => {
-    if (!billId) {
-      alert('Please enter a bill ID');
-      return;
+  if (!billId) {
+    alert("Please enter a bill ID")
+    return
+  }
+
+  // Add template validation
+  if (!selectedTemplate) {
+    alert("Please select a template before printing")
+    return
+  }
+
+  try {
+    setIsLoading(true)
+
+    const response = await publicApi.get(`/api/printingroute/print-bill/${billId}`, {
+      headers: {
+        "tenent-id": tenentId || "",
+      },
+    })
+
+    if (!response.data) {
+      throw new Error("No data returned from server")
     }
-    if (!selectedTemplate) {
-      alert("Please select a template before printing")
+
+    const responseOrder: BillResponseType = response.data
+
+    // Format order data
+    const formattedOrder: OrderType = {
+      id: responseOrder.bill_id,
+      name: responseOrder.customer_details.name,
+      toAddress: {
+        name: responseOrder.customer_details.name,
+        street: responseOrder.customer_details.street,
+        city: responseOrder.customer_details.district,
+        state: responseOrder.customer_details.state,
+        zipCode: responseOrder.customer_details.pincode,
+        phone: responseOrder.customer_details.phone,
+      },
+      isPrepaid: true,
+      orderDate: `${responseOrder.bill_details.date}, ${responseOrder.bill_details.time}`,
+      shipVia: responseOrder.shipping_details?.method_name || "Standard Shipping",
+      products: responseOrder.product_details.map((product) => ({
+        name: product.productName,
+        quantity: product.quantity,
+      })),
+      totalItems: responseOrder.product_details.reduce((total, product) => total + product.quantity, 0),
+      packedBy: "Team",
+      weight: responseOrder.shipping_details?.weight || "0.5 kg",
+    }
+
+    setCurrentOrder(formattedOrder)
+
+    // Add to print history
+    const updatedHistory = [billId, ...printHistory.filter((id) => id !== billId)].slice(0, 10)
+    setPrintHistory(updatedHistory)
+    localStorage.setItem("printHistory", JSON.stringify(updatedHistory))
+
+    // Generate UNIFIED layout data for EXACT consistency using current selectedTemplate
+    const layout = generateUnifiedLayoutData(responseOrder, selectedTemplate, previewFromAddress)
+
+    // Generate print content using UNIFIED system
+    const printContent = generatePrintContent(layout)
+    const printWindow = window.open("", "_blank")
+
+    if (!printWindow) {
+      alert("Unable to open print window. Please disable your pop-up blocker and try again.")
       return
     }
-    try {
-      setIsLoading(true);
-  
-      const response = await publicApi.get(`/api/printingroute/print-bill/${billId}`, {
-        headers: {
-          'tenent-id': tenentId || ''
-        }
-      });
-  
-      if (!response.data) {
-        throw new Error('No data returned from server');
-      }
-  
-      const responseOrder: BillResponseType = response.data;
-      
-      // Format order data - Fix the missing properties issue by adding all required fields
-      const formattedOrder: OrderType = {
-        id: responseOrder.bill_id,
-        name: responseOrder.customer_details.name,
-        toAddress: {
-          name: responseOrder.customer_details.name,
-          street: responseOrder.customer_details.street,
-          city: responseOrder.customer_details.district,
-          state: responseOrder.customer_details.state,
-          zipCode: responseOrder.customer_details.pincode,
-          phone: responseOrder.customer_details.phone
-        },
-        isPrepaid: true, // Default to true
-        orderDate: `${responseOrder.bill_details.date}, ${responseOrder.bill_details.time}`,
-        shipVia: responseOrder.shipping_details?.method_name || 'Standard Shipping',
-        products: responseOrder.product_details.map(product => ({
-          name: product.productName,
-          quantity: product.quantity
-        })),
-        totalItems: responseOrder.product_details.reduce((total, product) => total + product.quantity, 0),
-        packedBy: 'Team',
-        weight: responseOrder.shipping_details?.weight || '0.5 kg'
-      };
-  
-      setCurrentOrder(formattedOrder);
-      
-      // Add to print history
-      const updatedHistory = [billId, ...printHistory.filter(id => id !== billId)].slice(0, 10);
-      setPrintHistory(updatedHistory);
-      localStorage.setItem('printHistory', JSON.stringify(updatedHistory));
-      
-      // Calculate dimensions in inches (96 DPI standard)
-      const templateWidth = (selectedTemplate?.width || 384) / 96;
-      const templateHeight = (selectedTemplate?.height || 384) / 96;
-      
-      // Determine font sizes based on template dimensions
-      const getFontSizes = (template: TemplateType | null) => {
-        // Small template (2x4)
-        if (template?.id === '2x4' || (template?.width && template.width <= 192)) {
-          return {
-            baseFontSize: 5, // Further reduced
-            titleFontSize: 6, // Further reduced
-            smallFontSize: 4, // Further reduced
-            letterSpacing: '-0.4px', // Increased letter spacing reduction
-            lineHeight: 0.8, // Further reduced
-            padding: '1px', // Reduced padding
-            borderWidth: '0.5px'
-          };
-        }
-        // Medium template (4x4)
-        else if (template?.id === '4x4' || (template?.width && template.width <= 384)) {
-          return {
-            baseFontSize: 11,
-            titleFontSize: 12,
-            smallFontSize: 10,
-            letterSpacing: 'normal',
-            lineHeight: 1.2,
-            padding: '4px',
-            borderWidth: '1px'
-          };
-        }
-        // Larger templates
-        else {
-          return {
-            baseFontSize: 14,
-            titleFontSize: 16, 
-            smallFontSize: 12,
-            letterSpacing: 'normal',
-            lineHeight: 1.3,
-            padding: '6px',
-            borderWidth: '1px'
-          };
-        }
-      };
-      
-      // Adjust barcode size based on template
-      const barcodeWidth = selectedTemplate?.id === '2x4' ? 0.8 : 1.2;
-      const barcodeHeight = selectedTemplate?.id === '2x4' ? 25 : 40;
-      
-      // Get font sizes based on selected template
-      const fontSizes = getFontSizes(selectedTemplate);
-      
-      // Format product list with adaptive font sizes
-      const formatProductsList = (products: Array<{ productName?: string; name?: string; quantity: number }>): string => {
-        if (!products || products.length === 0) {
-          return "No products";
-        }
-        
-        // Calculate how many products we have to display
-        const totalProducts = products.length;
-        
-        // Dynamically reduce font size for longer product lists
-        let fontSize = fontSizes.smallFontSize;
-        let lineHeight = fontSizes.lineHeight;
-        
-        if (totalProducts > 6) {
-          fontSize = Math.max(fontSize - 1, 3); // Reduce font size but not below 3px
-          lineHeight = Math.max(lineHeight - 0.1, 0.7); // Reduce line height proportionally
-        }
-        
-        if (totalProducts > 10) {
-          fontSize = Math.max(fontSize - 1, 2); // Further reduce for very long lists
-          lineHeight = Math.max(lineHeight - 0.1, 0.6);
-        }
-        
-        // For small templates (2x4), always use compact format
-        if (selectedTemplate?.id === '2x4') {
-          return products.map(product => {
-            const productName = product.productName || product.name;
-            // Truncate product names for small templates
-            const truncatedName = productName && productName.length > 10 
-              ? productName.substring(0, 9) + '…' 
-              : productName;
-            return `${truncatedName} × ${product.quantity}`;
-          }).join(', ');
-        }
-        
-        // For larger templates, format as a vertical list with optimized spacing
-        return products.map(product => {
-          const productName = product.productName || product.name;
-          return `${productName} × ${product.quantity}`;
-        }).join(', ');
-      };
-      
-      // Instead of navigating to print step, directly print
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        alert('Unable to open print window. Please disable your pop-up blocker and try again.');
-        return;
-      }
-    
-      printWindow.document.open();
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8">
-            <title>Print Label - ${billId}</title>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
-            <style>
-              @media print {
-                @page {
-                  size: ${templateWidth}in ${templateHeight}in;
-                  margin: 0;
-                }
-                body {
-                  margin: 0;
-                  padding: 0;
-                  width: ${selectedTemplate?.width || 384}px !important;
-                  height: ${selectedTemplate?.height || 384}px !important;
-                  max-height: ${selectedTemplate?.height || 384}px !important;
-                }
-                .container {
-                  width: 100% !important;
-                  height: 100% !important;
-                  page-break-after: always;
-                  overflow: visible !important;
-                  box-sizing: border-box;
-                  padding: ${fontSizes.padding} !important;
-                  padding-top: 15px !important; /* Increased padding at the top */
-                  padding-left: 12px !important; /* Added padding for left */
-                  padding-right: 12px !important; /* Added padding for right */
-                  padding-bottom: 12px !important; /* Added padding for bottom */
-                  border: 0 !important;
-                }
-              }
-              
-              html, body {
-                margin: 0;
-                padding: 0;
-                font-family: Arial, sans-serif;
-                font-size: ${fontSizes.baseFontSize}px;
-                line-height: ${fontSizes.lineHeight};
-                font-weight: 500;
-                letter-spacing: ${fontSizes.letterSpacing};
-              }
-              
-              .container {
-                width: ${selectedTemplate?.width || 384}px;
-                height: ${selectedTemplate?.height || 384}px;
-                margin: 0 auto;
-                padding: ${fontSizes.padding};
-                padding-top: 15px; /* Added more padding at the top of the container */
-                padding-left: 12px; /* Added padding for left */
-                padding-right: 12px; /* Added padding for right */
-                padding-bottom: 12px; /* Added padding for bottom */
-                box-sizing: border-box;
-                position: relative;
-                border: 0;
-              }
-              
-              .header {
-                font-size: ${fontSizes.titleFontSize}px;
-                font-weight: bold;
-                margin-top: 10px; /* Add space before the Ship Via header */
-                margin-bottom: 2px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-              }
-              
-              .order-id {
-                font-size: ${fontSizes.titleFontSize}px;
-                font-weight: bold;
-                margin-bottom: 4px;
-                text-align: center;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-              }
-              
-              .barcode-wrapper {
-                text-align: center;
-                margin: 8px auto; /* Changed: added auto for horizontal centering */
-                height: ${barcodeHeight}px;
-                display: flex; /* Added: flexbox for better centering */
-                justify-content: center; /* Added: center horizontally */
-                align-items: center; /* Added: center vertically */
-                width: 90%; /* Added: set width to limit barcode width */
-              }
-              
-              .barcode-img {
-                max-height: 100%;
-                max-width: 100%; /* Added: ensure barcode fits container */
-              }
-              
-              .address-box {
-                border: ${fontSizes.borderWidth} solid #000;
-                padding: ${fontSizes.padding};
-                margin-bottom: 4px;
-                min-height: 80px;
-                overflow: visible;
-              }
-              
-              .to-name {
-                font-weight: bold;
-                font-size: ${fontSizes.titleFontSize}px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-              }
-              
-              .address-line {
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                line-height: ${fontSizes.lineHeight};
-                font-size: ${fontSizes.baseFontSize}px;
-              }
-              
-              .details-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 4px;
-                margin-bottom: 4px;
-              }
-              
-              .detail-box {
-                border: ${fontSizes.borderWidth} solid #000;
-                padding: ${fontSizes.padding};
-                min-height: 70px;
-              }
-              
-              .detail-title {
-                font-weight: bold;
-                font-size: ${fontSizes.titleFontSize}px;
-              }
-              
-              .product-section {
-                border: ${fontSizes.borderWidth} solid #000;
-                padding: ${fontSizes.padding};
-                padding-top: 4px; /* Reduced from 10px to save space */
-                margin-top: 6px; /* Reduced from 8px to save space */
-                min-height: ${60 - (formattedOrder.products.length > 6 ? 10 : 0)}px;
-                overflow: hidden; /* Changed from visible to prevent overflow */
-              }
-  
-              .product-title {
-                font-weight: bold;
-                font-size: ${fontSizes.titleFontSize}px;
-                margin-bottom: 1px; /* Reduced from 2px to save space */
-              }
-  
-              .product-list {
-                white-space: normal;
-                word-wrap: break-word;
-                line-height: ${formattedOrder.products.length > 6 ? Math.max(fontSizes.lineHeight - 0.2, 0.7) : fontSizes.lineHeight};
-                font-size: ${formattedOrder.products.length > 6 ? Math.max(fontSizes.smallFontSize - 1, 3) : fontSizes.smallFontSize}px;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                Ship Via: ${formattedOrder.shipVia}
-              </div>
-              
-              <div class="order-id">
-                ${previewFromAddress.name} Order ID: ${formattedOrder.id}
-              </div>
-              
-              <div class="barcode-wrapper">
-                <!-- Use an SVG element with an ID that JsBarcode can target -->
-                <svg id="barcode-${formattedOrder.id}" class="barcode-img"></svg>
-              </div>
-              
-              <div class="address-box">
-                <div class="to-name">TO ${formattedOrder.toAddress.name}</div>
-                <div class="address-line">${formattedOrder.toAddress.street}</div>
-                <div class="address-line">${formattedOrder.toAddress.city}</div>
-                <div class="address-line">${formattedOrder.toAddress.state} ${formattedOrder.toAddress.zipCode}</div>
-                <div class="address-line">${formattedOrder.toAddress.phone}</div>
-              </div>
-              
-              <div class="details-grid">
-                <div class="detail-box">
-                  <div class="detail-title">From:</div>
-                  <div class="address-line">${previewFromAddress.name}</div>
-                  <div class="address-line">${previewFromAddress.street}</div>
-                  <div class="address-line">${previewFromAddress.city}</div>
-                  <div class="address-line">${previewFromAddress.state}-${previewFromAddress.zipCode}</div>
-                  <div class="address-line">Mobile: ${previewFromAddress.phone}</div>
-                </div>
-                
-                <div class="detail-box">
-                  <div class="detail-title">
-                    Prepaid Order:
-                  </div>
-                  <div class="address-line">Date: ${formattedOrder.orderDate}</div>
-                  <div class="address-line">Weight: </div>
-                  <div class="address-line">No. of Items: ${formattedOrder.totalItems}</div>
-                  <div class="address-line">Source: Instagram</div>
-                  <div class="address-line">Packed By: </div>
-                </div>
-              </div>
-              
-              <div class="product-section">
-                <div class="product-title">Products:</div>
-                <div class="product-list">
-                  ${formatProductsList(formattedOrder.products)}
-                </div>
-              </div>
-            </div>
-            <script>
-              window.onload = function() {
-                // Generate the barcode after the document loads
-                JsBarcode("#barcode-${formattedOrder.id}", "${formattedOrder.id}", { 
-                  format: "CODE128", 
-                  width: ${barcodeWidth},
-                  height: ${barcodeHeight},
-                  displayValue: false,
-                  margin: 0
-                });
-                
-                // Wait a moment to ensure barcode renders before printing
-                setTimeout(() => {
-                  window.print();
-                  setTimeout(() => window.close(), 500);
-                }, 500);
-              };
-            </script>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      setTimeout(() => {
-        downloadBillDataAsPDF(billId, responseOrder, selectedTemplate)
-      }, 1000)
-    } catch (error: any) {
-      alert(`Error: ${error.message || 'Failed to print bill. Please try again.'}`);
-      console.error('Print error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
+    printWindow.document.open()
+    printWindow.document.write(printContent)
+    printWindow.document.close()
+
+    // Auto-download bill data as PDF after successful print setup
+    // Use the SAME selectedTemplate that was used for print preview
+    setTimeout(() => {
+      downloadBillDataAsPDF(billId, responseOrder, selectedTemplate)
+    }, 1000)
+  } catch (error: any) {
+    alert(`Error: ${error.message || "Failed to print bill. Please try again."}`)
+    console.error("Print error:", error)
+  } finally {
+    setIsLoading(false)
+  }
+}
 
   const handleBulkPrint = async () => {
     if (!isAddressSaved) {
-      alert('Please enter your shipping from address before printing in bulk');
-      return;
+      alert("Please enter your shipping from address before printing in bulk")
+      return
     }
 
     try {
-      setIsLoading(true);
-      const response = await publicApi.get('/api/printingroute/bulkPrinting', {
+      setIsLoading(true)
+      const response = await publicApi.get("/api/printingroute/bulkPrinting", {
         headers: {
-          'tenent-id': tenentId || ''
-        }
-      });
+          "tenent-id": tenentId || "",
+        },
+      })
 
       if (!response.data.bills || response.data.bills.length === 0) {
-        alert('No bills available for printing');
-        return;
+        alert("No bills available for printing")
+        return
       }
 
-      const printContent = generateBulkPrintContent(response.data.bills);
-      const printWindow = window.open('', '_blank');
+      const printContent = generateBulkPrintContent(response.data.bills)
+      const printWindow = window.open("", "_blank")
 
       if (!printWindow) {
-        alert('Unable to open print window. Please disable your pop-up blocker and try again.');
-        return;
+        alert("Unable to open print window. Please disable your pop-up blocker and try again.")
+        return
       }
 
-      printWindow.document.open();
-      printWindow.document.write(printContent);
-      printWindow.document.close();
+      printWindow.document.open()
+      printWindow.document.write(printContent)
+      printWindow.document.close()
 
-      printWindow.onload = function () {
+      printWindow.onload = () => {
         setTimeout(() => {
           try {
-            printWindow.focus();
-            printWindow.print();
-            setBills(0);
+            printWindow.focus()
+            printWindow.print()
+            setBills(0)
           } catch (error) {
-            console.error("Print error:", error);
-            alert("There was an error while trying to print. Please try again.");
+            console.error("Print error:", error)
+            alert("There was an error while trying to print. Please try again.")
           } finally {
-            printWindow.close();
+            printWindow.close()
+
+            // Auto-download all bills data as PDF after bulk print
             setTimeout(() => {
               downloadBulkBillsDataAsPDF(response.data.bills)
             }, 1000)
           }
-        }, 500);
-      };
-
-
+        }, 500)
+      }
     } catch (error: any) {
-      alert(`Error: ${error.message || 'Error during printing. Please try again.'}`);
-      console.error('Bulk print error:', error);
+      alert(`Error: ${error.message || "Error during printing. Please try again."}`)
+      console.error("Bulk print error:", error)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
+
   // UNIFIED BULK PRINT CONTENT GENERATOR
   const generateBulkPrintContent = (bills: BillResponseType[]) => {
-    // Get the dimensions from the selected template
-    const templateWidth = (selectedTemplate?.width || 384) / 96;
-    const templateHeight = (selectedTemplate?.height || 384) / 96;
-    
-    // Determine font sizes based on template dimensions - using the same logic as handlePrintBill
-    const getFontSizes = (template: TemplateType | null) => {
-      // Small template (2x4)
-      if (template?.id === '2x4' || (template?.width && template.width <= 192)) {
-        return {
-          baseFontSize: 5, // Further reduced
-          titleFontSize: 6, // Further reduced
-          smallFontSize: 4, // Further reduced
-          letterSpacing: '-0.4px', // Increased letter spacing reduction
-          lineHeight: 0.8, // Further reduced
-          padding: '1px', // Reduced padding
-          borderWidth: '0.5px'
-        };
-      }
-      // Medium template (4x4)
-      else if (template?.id === '4x4' || (template?.width && template.width <= 384)) {
-        return {
-          baseFontSize: 11,
-          titleFontSize: 12,
-          smallFontSize: 10,
-          letterSpacing: 'normal',
-          lineHeight: 1.2,
-          padding: '4px',
-          borderWidth: '1px'
-        };
-      }
-      // Larger templates
-      else {
-        return {
-          baseFontSize: 14,
-          titleFontSize: 16, 
-          smallFontSize: 12,
-          letterSpacing: 'normal',
-          lineHeight: 1.3,
-          padding: '6px',
-          borderWidth: '1px'
-        };
-      }
-    };
-  
-    // Get font sizes based on selected template
-    const fontSizes = getFontSizes(selectedTemplate);
-    
-    // Adjust barcode size based on template
-    const barcodeWidth = selectedTemplate?.id === '2x4' ? 0.8 : 1.2;
-    const barcodeHeight = selectedTemplate?.id === '2x4' ? 25 : 40;
-    
+    // Use first bill to determine template settings (all bills use same template)
+    const firstLayout = generateUnifiedLayoutData(bills[0], selectedTemplate, previewFromAddress)
+
     const styles = `
-      <style>
-        @media print {
-          @page {
-            size: ${templateWidth}in ${templateHeight}in;
-            margin: 0;
-          }
-          body {
-            margin: 0;
-            padding: 0;
-            width: ${selectedTemplate?.width || 384}px !important;
-            height: ${selectedTemplate?.height || 384}px !important;
-            max-height: ${selectedTemplate?.height || 384}px !important;
-          }
-          .page-container {
-            width: 100% !important;
-            height: 100% !important;
-            page-break-after: always;
-            overflow: visible !important;
-            box-sizing: border-box;
-          }
-          .container {
-            width: 100% !important;
-            height: 100% !important;
-            page-break-after: always;
-            overflow: visible !important;
-            box-sizing: border-box;
-            padding: ${fontSizes.padding} !important;
-            padding-top: 15px !important; /* Increased padding at the top */
-            padding-left: 12px !important; /* Added padding for left */
-            padding-right: 12px !important; /* Added padding for right */
-            padding-bottom: 12px !important; /* Added padding for bottom */
-            border: 0 !important;
-          }
-        }
-        
-        html, body {
-          margin: 0;
-          padding: 0;
-          font-family: Arial, sans-serif;
-          font-size: ${fontSizes.baseFontSize}px;
-          line-height: ${fontSizes.lineHeight};
-          font-weight: 500;
-          letter-spacing: ${fontSizes.letterSpacing};
-        }
-        
-        .page-container {
-          width: ${selectedTemplate?.width || 384}px;
-          height: ${selectedTemplate?.height || 384}px;
-          page-break-after: always;
-          margin: 0 auto;
-          box-sizing: border-box;
-          position: relative;
-        }
-        
-        .container {
-          width: ${selectedTemplate?.width || 384}px;
-          height: ${selectedTemplate?.height || 384}px;
-          margin: 0 auto;
-          padding: ${fontSizes.padding};
-          padding-top: 15px; /* Added more padding at the top of the container */
-          padding-left: 12px; /* Added padding for left */
-          padding-right: 12px; /* Added padding for right */
-          padding-bottom: 12px; /* Added padding for bottom */
-          box-sizing: border-box;
-          position: relative;
-          border: 0;
-        }
-        
-        .header {
-          font-size: ${fontSizes.titleFontSize}px;
-          font-weight: bold;
-          margin-top: 10px; /* Add space before the Ship Via header */
-          margin-bottom: 2px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        
-        .order-id {
-          font-size: ${fontSizes.titleFontSize}px;
-          font-weight: bold;
-          margin-bottom: 4px;
-          text-align: center;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        
-        .barcode-wrapper {
-          text-align: center;
-          margin: 8px auto; /* Changed: added auto for horizontal centering */
-          height: ${barcodeHeight}px;
-          display: flex; /* Added: flexbox for better centering */
-          justify-content: center; /* Added: center horizontally */
-          align-items: center; /* Added: center vertically */
-          width: 90%; /* Added: set width to limit barcode width */
-        }
-        
-        .barcode-img {
-          max-height: 100%;
-          max-width: 100%; /* Added: ensure barcode fits container */
-        }
-        
-        .address-box {
-          border: ${fontSizes.borderWidth} solid #000;
-          padding: ${fontSizes.padding};
-          margin-bottom: 4px;
-          min-height: 80px;
-          overflow: visible;
-        }
-        
-        .to-name {
-          font-weight: bold;
-          font-size: ${fontSizes.titleFontSize}px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        
-        .address-line {
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          line-height: ${fontSizes.lineHeight};
-          font-size: ${fontSizes.baseFontSize}px;
-        }
-        
-        .details-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 4px;
-          margin-bottom: 4px;
-        }
-        
-        .detail-box {
-          border: ${fontSizes.borderWidth} solid #000;
-          padding: ${fontSizes.padding};
-          min-height: 70px;
-        }
-        
-        .detail-title {
-          font-weight: bold;
-          font-size: ${fontSizes.titleFontSize}px;
-        }
-        
-        .product-section {
-          border: ${fontSizes.borderWidth} solid #000;
-          padding: ${fontSizes.padding};
-          padding-top: 4px; /* Reduced from 10px to save space */
-          margin-top: 6px; /* Reduced from 8px to save space */
-          min-height: 60px;
-          overflow: hidden; /* Changed from visible to prevent overflow */
-        }
-  
-        .product-title {
-          font-weight: bold;
-          font-size: ${fontSizes.titleFontSize}px;
-          margin-bottom: 1px; /* Reduced from 2px to save space */
-        }
-  
-        .product-list {
-          white-space: normal;
-          word-wrap: break-word;
-        }
-      </style>
-    `;
-    
-    // Format product list with adaptive font sizes
-    const formatProductsList = (products: Array<{ productName?: string; name?: string; quantity: number }>): string => {
-      if (!products || products.length === 0) {
-        return "No products";
-      }
-      
-      // Calculate how many products we have to display
-      const totalProducts = products.length;
-      
-      // Determine the best way to display based on product count
-      let fontSize = fontSizes.smallFontSize;
-      let lineHeight = fontSizes.lineHeight;
-      
-      // Dynamically reduce font size for longer product lists
-      if (totalProducts > 6) {
-        fontSize = Math.max(fontSize - 1, 3); // Reduce font size but not below 3px
-        lineHeight = Math.max(lineHeight - 0.1, 0.7); // Reduce line height proportionally
-      }
-      
-      if (totalProducts > 10) {
-        fontSize = Math.max(fontSize - 1, 2); // Further reduce for very long lists
-        lineHeight = Math.max(lineHeight - 0.1, 0.6);
-      }
-      
-      // For small templates (2x4), always use compact format
-      if (selectedTemplate?.id === '2x4') {
-        return products.map(product => {
-          const productName = product.productName || product.name;
-          // Truncate product names for small templates
-          const truncatedName = productName && productName.length > 10 
-            ? productName.substring(0, 9) + '…' 
-            : productName;
-          return `${truncatedName} × ${product.quantity}`;
-        }).join(', ');
-      }
-      
-      // For larger templates, format as a vertical list with optimized spacing
-      return products.map(product => {
-        const productName = product.productName || product.name;
-        return `${productName} × ${product.quantity}`;
-      }).join(', ');
-    };
-    
-    // Create a layout template based on the selected template size
+     <style>
+       @media print {
+         @page {
+           size: ${firstLayout.templateWidthPt / 72}in ${firstLayout.templateHeightPt / 72}in;
+           margin: 0;
+         }
+         body {
+           margin: 0;
+           padding: 0;
+           width: ${firstLayout.templateWidth}px !important;
+           height: ${firstLayout.templateHeight}px !important;
+           max-height: ${firstLayout.templateHeight}px !important;
+         }
+         .page-container {
+           width: 100% !important;
+           height: 100% !important;
+           page-break-after: always;
+           overflow: visible !important;
+           box-sizing: border-box;
+         }
+         .container {
+           width: 100% !important;
+           height: 100% !important;
+           page-break-after: always;
+           overflow: visible !important;
+           box-sizing: border-box;
+           padding: ${firstLayout.paddingPx}px !important;
+           padding-top: ${firstLayout.topPaddingAdjustment}px !important;
+           padding-left: ${firstLayout.marginPx}px !important;
+           padding-right: ${firstLayout.marginPx}px !important;
+           padding-bottom: ${firstLayout.marginPx}px !important;
+           border: 0 !important;
+         }
+       }
+       
+       html, body {
+         margin: 0;
+         padding: 0;
+         font-family: Arial, sans-serif;
+         font-size: ${firstLayout.baseFontSize}px;
+         line-height: ${firstLayout.lineHeight};
+         font-weight: 500;
+         letter-spacing: ${firstLayout.letterSpacing};
+       }
+       
+       .page-container {
+         width: ${firstLayout.templateWidth}px;
+         height: ${firstLayout.templateHeight}px;
+         page-break-after: always;
+         margin: 0 auto;
+         box-sizing: border-box;
+         position: relative;
+       }
+       
+       .container {
+         width: ${firstLayout.templateWidth}px;
+         height: ${firstLayout.templateHeight}px;
+         margin: 0 auto;
+         padding: ${firstLayout.paddingPx}px;
+         padding-top: ${firstLayout.topPaddingAdjustment}px;
+         padding-left: ${firstLayout.marginPx}px;
+         padding-right: ${firstLayout.marginPx}px;
+         padding-bottom: ${firstLayout.marginPx}px;
+         box-sizing: border-box;
+         position: relative;
+         border: 0;
+       }
+       
+       .header {
+         font-size: ${firstLayout.titleFontSize}px;
+         font-weight: bold;
+         margin-bottom: 2px;
+         white-space: nowrap;
+         overflow: hidden;
+         text-overflow: ellipsis;
+       }
+       
+       .order-id {
+         font-size: ${firstLayout.titleFontSize}px;
+         font-weight: bold;
+         margin-bottom: 4px;
+         text-align: center;
+         white-space: nowrap;
+         overflow: hidden;
+         text-overflow: ellipsis;
+       }
+       
+       .barcode-wrapper {
+         text-align: center;
+         margin: 8px auto;
+         height: ${firstLayout.barcodeHeight}px;
+         display: flex;
+         justify-content: center;
+         align-items: center;
+         width: 90%;
+       }
+       
+       .barcode-img {
+         max-height: 100%;
+         max-width: 100%;
+       }
+       
+       .address-box {
+         border: ${firstLayout.borderWidthPx}px solid #000;
+         padding: ${firstLayout.paddingPx}px;
+         margin-bottom: ${firstLayout.sectionSpacing}px;
+         min-height: ${firstLayout.toAddressBoxHeight - 20}px;
+         overflow: visible;
+       }
+       
+       .to-name {
+         font-weight: bold;
+         font-size: ${firstLayout.titleFontSize}px;
+         white-space: nowrap;
+         overflow: hidden;
+         text-overflow: ellipsis;
+       }
+       
+       .address-line {
+         white-space: nowrap;
+         overflow: hidden;
+         text-overflow: ellipsis;
+         line-height: ${firstLayout.lineHeight};
+         font-size: ${firstLayout.baseFontSize}px;
+       }
+       
+       .details-grid {
+         display: grid;
+         grid-template-columns: 1fr 1fr;
+         gap: ${firstLayout.sectionSpacing}px;
+         margin-bottom: ${firstLayout.sectionSpacing}px;
+       }
+       
+       .detail-box {
+         border: ${firstLayout.borderWidthPx}px solid #000;
+         padding: ${firstLayout.paddingPx}px;
+         min-height: ${firstLayout.detailBoxHeight - 20}px;
+       }
+       
+       .detail-title {
+         font-weight: bold;
+         font-size: ${firstLayout.titleFontSize}px;
+       }
+       
+       .product-section {
+         border: ${firstLayout.borderWidthPx}px solid #000;
+         padding: ${firstLayout.paddingPx}px;
+         padding-top: 4px;
+         margin-top: ${firstLayout.sectionSpacing}px;
+         min-height: 60px;
+         overflow: hidden;
+       }
+
+       .product-title {
+         font-weight: bold;
+         font-size: ${firstLayout.titleFontSize}px;
+         margin-bottom: 1px;
+       }
+
+       .product-list {
+         white-space: normal;
+         word-wrap: break-word;
+       }
+     </style>
+   `
+
+    // Generate HTML for all bills using UNIFIED layout system
     const generateLabelHTML = (bill: BillResponseType) => {
-      const totalItems = bill.product_details.reduce((total, product) => total + product.quantity, 0);
-      const productCount = bill.product_details.length;
-      
-      const fromAddress = {
-        name: bill.organisation_details.Name || previewFromAddress.name,
-        street: bill.organisation_details.street || previewFromAddress.street,
-        city: bill.organisation_details.district || previewFromAddress.city,
-        state: bill.organisation_details.state || previewFromAddress.state,
-        zipCode: bill.organisation_details.pincode || previewFromAddress.zipCode,
-        phone: bill.organisation_details.phone || previewFromAddress.phone
-      };
-      
+      // Generate EXACT same layout data as print preview for each bill
+      const layout = generateUnifiedLayoutData(bill, selectedTemplate, previewFromAddress)
+
       return `
-        <div class="page-container">
-          <div class="container">
-            <div class="header">
-              Ship Via: ${bill.shipping_details?.method_name || 'Standard Shipping'}
-            </div>
-            
-            <div class="order-id">
-              ${fromAddress.name} Order ID: ${bill.bill_details.bill_no}
-            </div>
-            
-            <div class="barcode-wrapper">
-              <!-- Use an SVG element with a unique ID -->
-              <svg id="barcode-${bill.bill_id}" class="barcode-img"></svg>
-            </div>
-            
-            <div class="address-box">
-              <div class="to-name">TO ${bill.customer_details.name}</div>
-              <div class="address-line">${(bill.customer_details.flat_no ? bill.customer_details.flat_no + ', ' : '') + bill.customer_details.street}</div>
-              <div class="address-line">${bill.customer_details.district}</div>
-              <div class="address-line">${bill.customer_details.state} ${bill.customer_details.pincode}</div>
-              <div class="address-line">${bill.customer_details.phone}</div>
-            </div>
-            
-            <div class="details-grid">
-              <div class="detail-box">
-                <div class="detail-title">From:</div>
-                <div class="address-line">${fromAddress.name}</div>
-                <div class="address-line">${fromAddress.street}</div>
-                <div class="address-line">${fromAddress.city}</div>
-                <div class="address-line">${fromAddress.state}-${fromAddress.zipCode}</div>
-                <div class="address-line">Mobile: ${fromAddress.phone}</div>
-              </div>
-              
-              <div class="detail-box">
-                <div class="detail-title">
-                  Prepaid Order:
-                </div>
-                <div class="address-line">Date: ${bill.bill_details.date}, ${bill.bill_details.time}</div>
-                <div class="address-line">Weight: </div>
-                <div class="address-line">No. of Items: ${totalItems}</div>
-                <div class="address-line">Source: Instagram</div>
-                <div class="address-line">Packed By: </div>
-              </div>
-            </div>
-            
-            <div class="product-section" style="padding-top: 4px; min-height: ${60 - (productCount > 6 ? 10 : 0)}px;">
-              <div class="product-title" style="margin-bottom: 1px;">Products:</div>
-              <div class="product-list" style="line-height: ${productCount > 6 ? Math.max(fontSizes.lineHeight - 0.2, 0.7) : fontSizes.lineHeight}; font-size: ${productCount > 6 ? Math.max(fontSizes.smallFontSize - 1, 3) : fontSizes.smallFontSize}px;">
-                ${formatProductsList(bill.product_details)}
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    };
-    
-    // Generate HTML for all bills
-    const billsHTML = bills.map(bill => generateLabelHTML(bill)).join('');
-    
-    // Create barcode initialization code for each bill
-    const barcodeInitScript = bills.map(bill => {
-      return `
-        JsBarcode("#barcode-${bill.bill_id}", "${bill.bill_details.bill_no}", { 
-          format: "CODE128", 
-          width: ${barcodeWidth},
-          height: ${barcodeHeight},
-          displayValue: false,
-          margin: 0
-        });
-      `;
-    }).join('\n');
-  
+     <div class="page-container">
+       <div class="container">
+         <div class="header">
+           Ship Via: ${layout.formattedOrder.shipVia}
+         </div>
+         
+         <div class="order-id">
+           ${layout.fromAddress.name} Order ID: ${bill.bill_details.bill_no}
+         </div>
+         
+         <div class="barcode-wrapper">
+           <svg id="barcode-${bill.bill_id}" class="barcode-img"></svg>
+         </div>
+         
+         <div class="address-box">
+           <div class="to-name">TO ${layout.formattedOrder.toAddress.name}</div>
+           <div class="address-line">${(bill.customer_details.flat_no ? bill.customer_details.flat_no + ", " : "") + bill.customer_details.street}</div>
+           <div class="address-line">${bill.customer_details.district}</div>
+           <div class="address-line">${bill.customer_details.state} ${bill.customer_details.pincode}</div>
+           <div class="address-line">${bill.customer_details.phone}</div>
+         </div>
+         
+         <div class="details-grid">
+           <div class="detail-box">
+             <div class="detail-title">From:</div>
+             <div class="address-line">${layout.fromAddress.name}</div>
+             <div class="address-line">${layout.fromAddress.street}</div>
+             <div class="address-line">${layout.fromAddress.city}</div>
+             <div class="address-line">${layout.fromAddress.state}-${layout.fromAddress.zipCode}</div>
+             <div class="address-line">Mobile: ${layout.fromAddress.phone}</div>
+           </div>
+           
+           <div class="detail-box">
+             <div class="detail-title">
+               Prepaid Order:
+             </div>
+             <div class="address-line">Date: ${layout.formattedOrder.orderDate}</div>
+             <div class="address-line">Weight: </div>
+             <div class="address-line">No. of Items: ${layout.formattedOrder.totalItems}</div>
+             <div class="address-line">Source: Instagram</div>
+             <div class="address-line">Packed By: </div>
+           </div>
+         </div>
+         
+         <div class="product-section" style="padding-top: 4px; min-height: ${60 - (layout.formattedOrder.products.length > 6 ? 10 : 0)}px;">
+           <div class="product-title" style="margin-bottom: 1px;">Products:</div>
+           <div class="product-list" style="line-height: ${layout.formattedOrder.products.length > 6 ? Math.max(layout.lineHeight - 0.2, 0.7) : layout.lineHeight}; font-size: ${layout.formattedOrder.products.length > 6 ? Math.max(layout.smallFontSize - 1, 3) : layout.smallFontSize}px;">
+             ${layout.productText}
+           </div>
+         </div>
+       </div>
+     </div>
+   `
+    }
+
+    const billsHTML = bills.map((bill) => generateLabelHTML(bill)).join("")
+
+    // Create barcode initialization code for each bill using UNIFIED settings
+    const barcodeInitScript = bills
+      .map((bill) => {
+        const layout = generateUnifiedLayoutData(bill, selectedTemplate, previewFromAddress)
+        return `
+     JsBarcode("#barcode-${bill.bill_id}", "${bill.bill_details.bill_no}", {
+       format: "CODE128",
+       width: ${layout.barcodeWidth},
+       height: ${layout.barcodeHeight},
+       displayValue: false,
+       margin: 0
+     });
+   `
+      })
+      .join("\n")
+
     return `
-      <!DOCTYPE html>
-      <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <title>Print Bills</title>
-          ${styles}
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
-        </head>
-        <body>
-          ${billsHTML}
-          <script>
-            // Wait for document to fully load before generating barcodes
-            document.addEventListener('DOMContentLoaded', function() {
-              try {
-                // Generate all barcodes
-                ${barcodeInitScript}
-                
-                // Wait for barcodes to render before printing
-                setTimeout(function() {
-                  window.print();
-                  setTimeout(() => window.close(), 500);
-                }, 1000); // Increased timeout to ensure barcodes render
-              } catch(error) {
-                console.error('Error generating barcodes:', error);
-                alert('There was an error generating the barcodes. Please try again.');
-              }
-            });
-          </script>
-        </body>
-      </html>
-    `;
-  };
+     <!DOCTYPE html>
+     <html lang="en">
+       <head>
+         <meta charset="UTF-8">
+         <title>Print Bills</title>
+         ${styles}
+         <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+       </head>
+       <body>
+         ${billsHTML}
+         <script>
+           document.addEventListener('DOMContentLoaded', function() {
+             try {
+               ${barcodeInitScript}
+               
+               setTimeout(function() {
+                 window.print();
+                 setTimeout(() => window.close(), 500);
+               }, 1000);
+             } catch(error) {
+               console.error('Error generating barcodes:', error);
+               alert('There was an error generating the barcodes. Please try again.');
+             }
+           });
+         </script>
+       </body>
+     </html>
+   `
+  }
 
   const renderTemplatePreview = (template: TemplateType) => {
     return (

@@ -98,7 +98,7 @@ const tenantVectorDBs = require('./vectorDBState');
 // Configuration
 //global.tenantVectorDBs = {};
 const config = require("../services/config");
-const appUrl = process.env.APP_URL || 'https://8420-117-247-96-193.ngrok-free.app';
+const appUrl = process.env.APP_URL || 'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app';
 const regex = /\w+/g;
 const { Worker } = require('worker_threads');
 const { clients } = require('./messageRoutes');
@@ -4921,7 +4921,7 @@ async function handlePayload(payload, senderID,tenentId,recipientID,title,userAc
                       {
                         type: "web_url",
                         title: "View Our Products",
-                        url: `https://8420-117-247-96-193.ngrok-free.app/productcatalog?tenentId=${tenentId}&securityaccessToken=${securityaccessToken}`
+                        url: `https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/productcatalog?tenentId=${tenentId}&securityaccessToken=${securityaccessToken}`
                       }
                       
                     ],

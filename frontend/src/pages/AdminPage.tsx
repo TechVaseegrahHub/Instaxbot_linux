@@ -28,7 +28,7 @@ export default function AdminPage() {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('https://8420-117-247-96-193.ngrok-free.app/api/auth/users', {
+      const response = await axios.get('https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/auth/users', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -49,7 +49,7 @@ export default function AdminPage() {
       setLoading(true);
   
       const response = await axios.put(
-        `https://8420-117-247-96-193.ngrok-free.app/api/auth/users/${userId}/block`,
+        `https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/auth/users/${userId}/block`,
         {
           currentStatus: currentStatus,
           tenentId: tenentId

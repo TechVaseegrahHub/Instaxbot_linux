@@ -522,7 +522,7 @@ router.post('/update-tracking', async (req, res) => {
       tracking_number: trackingNumber,
       weight: parseFloat(weight),
       tracking_status: 'SHIPPED',
-      status: 'SHIPPED',
+      status: 'COMPLETED',
       shipping_partner: shippingPartner,
       updated_at: new Date()
     };
@@ -794,7 +794,7 @@ router.post('/bulk-update-tracking', async (req, res) => {
           tracking_number: orderData.trackingNumber,
           weight: parseFloat(orderData.weight),
           tracking_status: 'SHIPPED',
-          status: 'SHIPPED',
+          status: 'COMPLETED',
           updated_at: new Date()
         };
 

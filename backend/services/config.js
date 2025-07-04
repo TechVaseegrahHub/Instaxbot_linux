@@ -58,7 +58,7 @@ module.exports = {
   shopUrl: process.env.SHOP_URL || "https://www.originalcoastclothing.com",
 
   // URL of your app domain. Will be automatically updated.
-  appUrl: process.env.APP_URL || "https://8420-117-247-96-193.ngrok-free.app",
+  appUrl: process.env.APP_URL || "https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app",
 
   // Preferred port (default to 3000)
   port: process.env.PORT || 5000,

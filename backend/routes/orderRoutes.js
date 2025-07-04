@@ -23,110 +23,78 @@ const validateTenantId = (tenentId) => {
   return true;
 };
 
-// Helper function to safely convert MongoDB values to JavaScript primitives
-const safeConvert = (value) => {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  
-  // Handle MongoDB NumberInt, NumberLong, NumberDecimal
-  if (typeof value === 'object' && value !== null) {
-    if (value.$numberInt !== undefined) {
-      return parseInt(value.$numberInt, 10);
-    }
-    if (value.$numberLong !== undefined) {
-      return parseInt(value.$numberLong, 10);
-    }
-    if (value.$numberDecimal !== undefined) {
-      return parseFloat(value.$numberDecimal);
-    }
-    if (value.$numberDouble !== undefined) {
-      return parseFloat(value.$numberDouble);
-    }
-    // Handle MongoDB Date objects
-    if (value.$date !== undefined) {
-      return new Date(value.$date);
-    }
-  }
-  
-  return value;
-};
-
-// Helper function to deeply clean MongoDB objects
-const cleanMongoObject = (obj) => {
-  if (obj === null || obj === undefined) {
-    return obj;
-  }
-  
-  if (Array.isArray(obj)) {
-    return obj.map(cleanMongoObject);
-  }
-  
-  if (typeof obj === 'object' && obj !== null) {
-    // Handle special MongoDB types first
-    const converted = safeConvert(obj);
-    if (converted !== obj) {
-      return converted;
-    }
-    
-    // Clean nested objects
-    const cleaned = {};
-    for (const [key, value] of Object.entries(obj)) {
-      cleaned[key] = cleanMongoObject(value);
-    }
-    return cleaned;
-  }
-  
-  return obj;
-};
-
-// Helper function to format order for frontend
+// Simplified helper function to format order for frontend
 const formatOrderForFrontend = (order) => {
-  const cleanOrder = cleanMongoObject(order); // already defined in your code
+  console.log('=== FORMATTING ORDER ===');
+  console.log('Raw orderId:', order.orderId);
+  console.log('Raw customer_name:', order.customer_name);
+  console.log('Raw total_amount:', order.total_amount);
+  console.log('Raw created_at:', order.created_at);
 
+  // Simple direct mapping without complex transformations
   const safeGet = (val, def = '') => {
-    const conv = safeConvert(val);
-    return (conv === null || conv === undefined || typeof conv === 'object') ? def : conv;
+    if (val === null || val === undefined) return def;
+    if (typeof val === 'string' || typeof val === 'number') return val;
+    if (typeof val === 'object' && val !== null) {
+      // Convert to string if it's an object
+      return val.toString() || def;
+    }
+    return def;
   };
 
-  return {
-    id: cleanOrder.orderId || cleanOrder._id?.toString() || '',
-    date: formatDate(cleanOrder.created_at),
-    name: safeGet(cleanOrder.customer_name) || safeGet(cleanOrder.profile_name) || 'N/A',
-    phoneNumber: safeGet(cleanOrder.phone_number, 'N/A'),
-    totalAmount: parseFloat(safeConvert(cleanOrder.total_amount)) || 0,
-    status: (safeGet(cleanOrder.status, 'CREATED')).toString().toUpperCase(),
-    billNo: safeGet(cleanOrder.bill_no),
-    paymentStatus: safeGet(cleanOrder.paymentStatus),
-    paymentMethod: safeGet(cleanOrder.paymentMethod),
+  const safeGetNumber = (val, def = 0) => {
+    if (val === null || val === undefined) return def;
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') {
+      const num = parseFloat(val);
+      return isNaN(num) ? def : num;
+    }
+    return def;
+  };
 
-    products: Array.isArray(cleanOrder.products)
-      ? cleanOrder.products.map(product => ({
-          sku: safeGet(product.sku),
-          product_name: safeGet(product.product_name),
-          quantity: parseInt(safeConvert(product.quantity)) || 1,
-          price: parseFloat(safeConvert(product.price)) || 0,
+  const formatted = {
+    id: order.orderId || order._id?.toString() || '',
+    date: formatDate(order.created_at),
+    name: order.customer_name || order.profile_name || 'N/A',
+    phoneNumber: order.phone_number || 'N/A',
+    totalAmount: safeGetNumber(order.total_amount, 0),
+    status: (order.status || 'CREATED').toString().toUpperCase(),
+    billNo: order.bill_no || '',
+    paymentStatus: order.paymentStatus || '',
+    paymentMethod: order.paymentMethod || '',
+
+    products: Array.isArray(order.products)
+      ? order.products.map(product => ({
+          sku: product.sku || '',
+          product_name: product.product_name || '',
+          quantity: safeGetNumber(product.quantity, 1),
+          price: safeGetNumber(product.price, 0),
         }))
       : [],
 
-    address: safeGet(cleanOrder.address),
-    city: safeGet(cleanOrder.city),
-    state: safeGet(cleanOrder.state),
-    zipCode: safeGet(cleanOrder.zip_code || cleanOrder.zipCode),
-    pincode: safeGet(cleanOrder.pincode || cleanOrder.pin_code),
-    country: safeGet(cleanOrder.country),
-    fullAddress: safeGet(cleanOrder.full_address),
-    landmark: safeGet(cleanOrder.landmark),
-    trackingNumber: safeGet(cleanOrder.tracking_number),
-    trackingStatus: safeGet(cleanOrder.tracking_status),
-    packingStatus: safeGet(cleanOrder.packing_status),
-    isPacked: Boolean(cleanOrder.is_packed),
-    razorpayOrderId: safeGet(cleanOrder.razorpayOrderId),
-    razorpayPaymentId: safeGet(cleanOrder.razorpayPaymentId),
-    createdAt: cleanOrder.created_at,
-    updatedAt: cleanOrder.updated_at,
-    customerNotes: safeGet(cleanOrder.customer_notes),
+    address: order.address || '',
+    city: order.city || '',
+    state: order.state || '',
+    zipCode: order.zip_code || order.zipCode || '',
+    pincode: order.pincode || order.pin_code || '',
+    country: order.country || '',
+    fullAddress: order.full_address || '',
+    landmark: order.landmark || '',
+    trackingNumber: order.tracking_number || '',
+    trackingStatus: order.tracking_status || '',
+    packingStatus: order.packing_status || '',
+    isPacked: Boolean(order.is_packed),
+    razorpayOrderId: order.razorpayOrderId || '',
+    razorpayPaymentId: order.razorpayPaymentId || '',
+    createdAt: order.created_at,
+    updatedAt: order.updated_at,
+    customerNotes: order.customer_notes || '',
   };
+
+  console.log('Formatted result:', JSON.stringify(formatted, null, 2));
+  console.log('========================');
+  
+  return formatted;
 };
 
 // Helper function to build search query
@@ -240,13 +208,10 @@ router.post('/fetch-orders', async (req, res) => {
     console.log(`Total orders matching query: ${totalOrders}`);
     console.log(`Orders returned for page ${pageNum}: ${orders.length}`);
 
-    // Log first order structure for debugging
-    if (orders.length > 0) {
-      console.log(`Sample order structure:`, JSON.stringify(orders[0], null, 2));
-    }
-    
-    // Format orders for frontend with proper cleaning
+    // Format orders for frontend
     const formattedOrders = orders.map(formatOrderForFrontend);
+
+    console.log('First formatted order final:', JSON.stringify(formattedOrders[0], null, 2));
 
     // Calculate pagination info
     const totalPages = Math.ceil(totalOrders / limitNum);
@@ -385,13 +350,13 @@ router.post('/fetch-order/:orderNumber', async (req, res) => {
     order = await Order.findOne({ 
       orderId: orderNumber,
       tenentId: tenentId 
-    }).lean(); // Use .lean() here too
+    }).lean();
     
     if (!order && mongoose.Types.ObjectId.isValid(orderNumber)) {
       order = await Order.findOne({
         _id: orderNumber,
         tenentId: tenentId
-      }).lean(); // Use .lean() here too
+      }).lean();
     }
     
     if (!order) {

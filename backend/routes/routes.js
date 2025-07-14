@@ -95,7 +95,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const openai = new OpenAI({
   apiKey: OPENAI_API_KEY // This is the default and can be omitted
 });
-const appUrl = process.env.APP_URL || 'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app';
+const appUrl = process.env.APP_URL || 'https://79fba8ba62d3.ngrok-free.app';
 const regex = /\w+/g;
 let vectorDB = [];
 const config = require("../services/config");

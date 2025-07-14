@@ -29,6 +29,7 @@ const TemplateMessage = require('../models/TemplateMessage');
 const EngagedUser = require('../models/EngagedUser'); 
 const WelcomePage = require('../models/WelcomePage');
 const { updateVectorDB, getVectorDB } = require('./VectorDBRoutes');
+const Order = require('../models/Order');
 const rateLimitService = require('../services/rateLimitService');
 // Keep all your existing utility imports
 const os = require('os');
@@ -98,7 +99,7 @@ const tenantVectorDBs = require('./vectorDBState');
 // Configuration
 //global.tenantVectorDBs = {};
 const config = require("../services/config");
-const appUrl = process.env.APP_URL || 'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app';
+const appUrl = process.env.APP_URL || 'https://79fba8ba62d3.ngrok-free.app';
 const regex = /\w+/g;
 const { Worker } = require('worker_threads');
 const { clients } = require('./messageRoutes');
@@ -1754,7 +1755,7 @@ async function processUserMessage({webhookEvent, tenentId, userAccessToken, send
         if(signupdata){
           const username = signupdata.name;
           let response;
-          if (messageText.includes('#') || messageText.includes('*')) {
+          if (messageText.includes('#') || messageText.includes('*') || messageText.includes('$')) {
           try {
             const storeCredentials = await ecommerceCredentialsService.getCredentialsForAPI(tenentId);
             
@@ -1844,7 +1845,23 @@ async function processUserMessage({webhookEvent, tenentId, userAccessToken, send
                 }
                 return;
               }
+              if (messageText.includes('$')) {
+                // Action to take if '$' is found in user_input
+                const orderId = messageText.split('$')[0];
+                if (!orderId) {
+                    return 'Invalid format. Please enter a valid order ID followed by $ (e.g., 12345$).';
+                }
               
+                // Try to get order details from MongoDB
+                if (tenentId) { // Make sure you have tenentId available in your context
+                    response = await mongoGetOrderDetailsResponse(orderId, tenentId);
+                } else {
+                    return "No tenant ID available to check order details.";
+                }
+              
+                console.log("The input contains a '$' character.");
+                return response;
+              }
               if (messageText.includes('*')) {
                 // Extract the product name
                 const productName = messageText.split('*')[0];
@@ -2116,7 +2133,7 @@ async function processUserMessage({webhookEvent, tenentId, userAccessToken, send
             if(signupdata){
               const username = signupdata.name;
               let response;
-              if (messageText.includes('#') || messageText.includes('*')) {
+              if (messageText.includes('#') || messageText.includes('*') || messageText.includes('$') ) {
               try {
                 const storeCredentials = await ecommerceCredentialsService.getCredentialsForAPI(tenentId);
                 
@@ -2206,7 +2223,23 @@ async function processUserMessage({webhookEvent, tenentId, userAccessToken, send
                     }
                     return;
                   }
+                  if (messageText.includes('$')) {
+                    // Action to take if '$' is found in user_input
+                    const orderId = messageText.split('$')[0];
+                    if (!orderId) {
+                        return 'Invalid format. Please enter a valid order ID followed by $ (e.g., 12345$).';
+                    }
                   
+                    // Try to get order details from MongoDB
+                    if (tenentId) { // Make sure you have tenentId available in your context
+                        response = await mongoGetOrderDetailsResponse(orderId, tenentId);
+                    } else {
+                        return "No tenant ID available to check order details.";
+                    }
+                  
+                    console.log("The input contains a '$' character.");
+                    return response;
+                  }
                   if (messageText.includes('*')) {
                     // Extract the product name
                     const productName = messageText.split('*')[0];
@@ -2401,7 +2434,7 @@ async function processUserMessage({webhookEvent, tenentId, userAccessToken, send
           let response;
           
           // Handle special commands for product/order lookup
-          if (messageText && (messageText.includes('#') || messageText.includes('*'))) {
+          if (messageText && (messageText.includes('#') || messageText.includes('*') || messageText.includes('$'))) {
             try {
               const storeCredentials = await ecommerceCredentialsService.getCredentialsForAPI(tenentId);
               if (storeCredentials && storeCredentials.websites && storeCredentials.websites.length > 0) {
@@ -2504,7 +2537,23 @@ async function processUserMessage({webhookEvent, tenentId, userAccessToken, send
                   }
                   return;
                 }
-
+                if (messageText.includes('$')) {
+                  // Action to take if '$' is found in user_input
+                  const orderId = messageText.split('$')[0];
+                  if (!orderId) {
+                      return 'Invalid format. Please enter a valid order ID followed by $ (e.g., 12345$).';
+                  }
+                
+                  // Try to get order details from MongoDB
+                  if (tenentId) { // Make sure you have tenentId available in your context
+                      response = await mongoGetOrderDetailsResponse(orderId, tenentId);
+                  } else {
+                      return "No tenant ID available to check order details.";
+                  }
+                
+                  console.log("The input contains a '$' character.");
+                  return response;
+                }
                 // Handle product stock lookup
                 if (messageText.includes('*')) {
                   // Extract the product name
@@ -4798,7 +4847,7 @@ async function handlePayload(payload, senderID,tenentId,recipientID,title,userAc
               console.error('Failed to send product template:', error);
             }
             break;
-          case "PRODUCT_CATAGORY_LINK":
+            case "PRODUCT_CATAGORY_LINK":
             try {
               const signupdata=await Signup.findOne({tenentId:tenentId}).sort({ createdAt: -1 }).limit(1);
                     if(signupdata){
@@ -4809,17 +4858,6 @@ async function handlePayload(payload, senderID,tenentId,recipientID,title,userAc
               if (!productTypes || !productTypes.productTypes.length) {
                 const response= "No product or services categories found. Please contact support.";
                 await sendInstagramMessage(recipientID, userAccessToken, senderID, response);
-                /*const payloadproductdata={senderId: recipientID,
-                                          recipientId: senderID,
-                                          tenentId,
-                                          response: "No product or services categories found. Please contact support.",
-                                          Timestamp: timestamp,};
-                const payloadproduct=await Message.createTextMessage(payloadproductdata);
-                if(payloadproduct){
-                  console.log("payloadproduct",payloadproduct);
-                  const type="text";
-                  await sendNewMessage(payloadproductdata, tenentId,type);
-                }*/
                 break;
               }}}
           
@@ -4831,26 +4869,10 @@ async function handlePayload(payload, senderID,tenentId,recipientID,title,userAc
                 Timestamp: timestamp
               };
           
-              // Create and send the product template
-              //await Message.createProductTemplate(messageData, productTypes.productTypes);
-          
             } catch (error) {
               console.error('Error handling PRODUCT_CATEGORY:', error);
               const response = "Sorry, something went wrong. Please try again later."
               await sendInstagramMessage(recipientID, userAccessToken, senderID, response);
-              // Send error message to user
-              /*const payloadproduct2data={senderId: recipientID,
-                                          recipientId: senderID,
-                                          tenentId,
-                                          response: "Sorry, something went wrong. Please try again later.",
-                                          Timestamp: timestamp
-                                        };
-              const payloadproduct2=await Message.createTextMessage(payloadproduct2data);
-              if(payloadproduct2){
-                console.log("payloadproduct",payloadproduct);
-                const type="text";
-                await sendNewMessage(payloadproduct2data, tenentId,type);
-              }*/
             }
             try {
               const IdData = await LongToken.findOne({ tenentId: tenentId })
@@ -4866,8 +4888,7 @@ async function handlePayload(payload, senderID,tenentId,recipientID,title,userAc
                       title="Browse our Product and Services"
                       }
                     }
-              //const tenentId = IdData.tenentId;
-              //const userAccessToken = IdData.userAccessToken;
+              
               const browseproductmessagedata={senderId: senderID,
                                               recipientId: recipientID,
                                               message: title,
@@ -4879,15 +4900,7 @@ async function handlePayload(payload, senderID,tenentId,recipientID,title,userAc
                 const type="text";
                 await sendNewMessage(browseproductmessagedata, tenentId,type);
               }
-              /*await sendInstagramProduct_type_quick_reply(
-                recipientID,
-                userAccessToken,
-                senderID,
-                tenentId,
-                timestamp
-              );*/
 
-              
               let existingToken = await SecurityAccessToken.findOne({ senderId: senderID, tenentId: tenentId });
               let securityaccessToken;
               if (existingToken) {
@@ -4911,34 +4924,37 @@ async function handlePayload(payload, senderID,tenentId,recipientID,title,userAc
                 securityaccessToken=existingToken.securityaccessToken;
               }
               }
+
               const firstresponse={
                 attachment: {
                   type: "template",
                   payload: {
                     template_type: "button",
-                    text:  "Browse Our Products",
+                    text:  "Click the button below to browse our products",
+                    default_action: {
+                      type: "web_url",
+                      url: `https://79fba8ba62d3.ngrok-free.app/productcatalog?tenentId=${tenentId}&securityaccessToken=${securityaccessToken}`
+                    },
                     buttons: [
                       {
                         type: "web_url",
                         title: "View Our Products",
-                        url: `https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/productcatalog?tenentId=${tenentId}&securityaccessToken=${securityaccessToken}`
+                        url: `https://79fba8ba62d3.ngrok-free.app/productcatalog?tenentId=${tenentId}&securityaccessToken=${securityaccessToken}`
                       }
                       
                     ],
                   },
                 },
               };
+              
               await sendInstagramProductTemplateMessage(recipientID, userAccessToken, senderID,tenentId,firstresponse);
               const timestamp2=timestamp+10
               const messagedata = {
                 senderId: senderID,
                 recipientId: recipientID,
-                
                 response:firstresponse,
-                
                 Timestamp:timestamp2,
                 tenentId:tenentId
-                
               }
               try {
                   const message = await Message.createProductTemplateMessage(messagedata);
@@ -6142,6 +6158,113 @@ async function wooCommercegetOrderStatusResponse(orderId,OrderStatusurl) {
       return "We're unable to fetch the order status right now. Please try again later or contact customer support.";
   }
 }
+async function mongoGetOrderDetailsResponse(orderId, tenentId) {
+  try {
+      // Use the existing Order model from your schema
+      let order = null;
+      
+      // First try to find by orderId
+      order = await Order.findOne({ 
+          orderId: orderId,
+          tenentId: tenentId 
+      }).lean();
+      
+      // If not found and it's a valid ObjectId, try by _id
+      if (!order && mongoose.Types.ObjectId.isValid(orderId)) {
+          order = await Order.findOne({
+              _id: orderId,
+              tenentId: tenentId
+          }).lean();
+      }
+      
+      if (!order) {
+          return `Order #${orderId} not found. Please check the order ID and try again.`;
+      }
+
+      // Format the order details for user-friendly response
+      const formattedOrder = formatOrderForUserResponse(order);
+      return formattedOrder;
+
+  } catch (error) {
+      console.error(`Failed to retrieve order details. Error: ${error}`);
+      return "We're unable to fetch the order details right now. Please try again later or contact customer support.";
+  }
+}
+
+// Helper function to format order details for user response
+function formatOrderForUserResponse(order) {
+  const formatCurrency = (amount) => {
+      return new Intl.NumberFormat('en-IN', {
+          style: 'currency',
+          currency: 'INR'
+      }).format(amount || 0);
+  };
+
+  const formatDate = (date) => {
+      if (!date) return 'N/A';
+      return new Date(date).toLocaleDateString('en-IN', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+      });
+  };
+
+  let response = `📦 *Order Details*\n\n`;
+  response += `🆔 *Order ID:* ${order.orderId || 'N/A'}\n`;
+  response += `👤 *Customer:* ${order.customer_name || order.profile_name || 'N/A'}\n`;
+  response += `📱 *Phone:* ${order.phone_number || 'N/A'}\n`;
+  response += `💰 *Total Amount:* ${formatCurrency(order.total_amount)}\n`;
+  response += `📊 *Status:* ${(order.status || 'N/A').toUpperCase()}\n`;
+  
+  if (order.paymentStatus) {
+      response += `💳 *Payment Status:* ${order.paymentStatus.toUpperCase()}\n`;
+  }
+  
+  if (order.paymentMethod) {
+      response += `💳 *Payment Method:* ${order.paymentMethod}\n`;
+  }
+
+  // Add products information
+  if (order.products && order.products.length > 0) {
+      response += `\n📋 *Products:*\n`;
+      order.products.forEach((product, index) => {
+          response += `${index + 1}. ${product.product_name || 'N/A'} `;
+          response += `(Qty: ${product.quantity || 1}) - ${formatCurrency(product.price)}\n`;
+      });
+  }
+
+  // Add shipping information
+  if (order.address || order.city || order.state) {
+      response += `\n🚚 *Shipping Address:*\n`;
+      if (order.address) response += `${order.address}\n`;
+      if (order.city) response += `${order.city}`;
+      if (order.state) response += `, ${order.state}`;
+      if (order.zip_code || order.pincode) response += ` - ${order.zip_code || order.pincode}`;
+      response += `\n`;
+  }
+
+  // Add tracking information
+  if (order.tracking_number) {
+      response += `\n📍 *Tracking Number:* ${order.tracking_number}\n`;
+  }
+
+  if (order.tracking_status && order.tracking_status !== 'NOT_SHIPPED') {
+      response += `🚛 *Tracking Status:* ${order.tracking_status.replace('_', ' ')}\n`;
+  }
+
+  if (order.packing_status && order.packing_status !== 'PENDING') {
+      response += `📦 *Packing Status:* ${order.packing_status.replace('_', ' ')}\n`;
+  }
+
+  // Add customer notes if available
+  if (order.customer_notes) {
+      response += `\n📝 *Customer Notes:* ${order.customer_notes}\n`;
+  }
+
+  response += `\n*Last Updated:* ${formatDate(order.updated_at || order.created_at)}`;
+
+  return response;
+}
 async function createEmbedding(text, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
@@ -6424,7 +6547,7 @@ let username
   if(signupdata){
     username = signupdata.name;
   let response;
-    if (userInput.includes('#') || userInput.includes('*')) {
+    if (userInput.includes('#') || userInput.includes('*') || userInput.includes('$')) {
   
       console.log("userinput have# & *");
   try {
@@ -6498,6 +6621,25 @@ let username
         
         return productDetails;
       }
+      if (userInput.includes('$')) {
+        // Action to take if '$' is found in user_input
+        const orderId = userInput.split('$')[0];
+        if (!orderId) {
+            return 'Invalid format. Please enter a valid order ID followed by $ (e.g., 12345$).';
+        }
+      
+        // Try to get order details from MongoDB
+        if (tenentId) { // Make sure you have tenentId available in your context
+            response = await mongoGetOrderDetailsResponse(orderId, tenentId);
+        } else {
+            return "No tenant ID available to check order details.";
+        }
+      
+        console.log("The input contains a '$' character.");
+        return response;
+      }
+      
+
     } else {
       return "No store credentials found for this account.";
     }
@@ -6631,7 +6773,7 @@ let username
   if(signupdata){
     username = signupdata.name;
   let response;
-    if (userInput.includes('#') || userInput.includes('*')) {
+    if (userInput.includes('#') || userInput.includes('*') || userInput.includes('$')) {
   
       console.log("userinput have# & *");
   try {
@@ -6669,7 +6811,23 @@ let username
         console.log("The input contains a '#' character.");
         return response;
       }
+      if (userInput.includes('$')) {
+        // Action to take if '$' is found in user_input
+        const orderId = userInput.split('$')[0];
+        if (!orderId) {
+            return 'Invalid format. Please enter a valid order ID followed by $ (e.g., 12345$).';
+        }
       
+        // Try to get order details from MongoDB
+        if (tenentId) { // Make sure you have tenentId available in your context
+            response = await mongoGetOrderDetailsResponse(orderId, tenentId);
+        } else {
+            return "No tenant ID available to check order details.";
+        }
+      
+        console.log("The input contains a '$' character.");
+        return response;
+      }
       if (userInput.includes('*')) {
         // Extract the product name
         const productName = userInput.split('*')[0];

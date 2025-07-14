@@ -83,7 +83,7 @@ const VideoMessage: React.FC<VideoMessageProps> = ({
         }
   
         try {
-          const baseUrl = process.env.REACT_APP_API_URL || 'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app';
+          const baseUrl = process.env.REACT_APP_API_URL || 'https://79fba8ba62d3.ngrok-free.app';
           const proxyUrl = `${baseUrl}/api/imageproxyroutes/proxy-video`;
   
           if (sourceVideoUrl) {

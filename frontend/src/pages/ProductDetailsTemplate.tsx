@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { Plus, Minus, Save, Link as LinkIcon, Image } from 'lucide-react';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import Swal from 'sweetalert2';
 import { Link } from "react-router-dom";
 
@@ -16,9 +16,10 @@ interface ProductDetailsTemplateProps {
 
 interface ProductDetail {
   productName: string;
+  productDescription: string;
   units: ProductUnit[];
   websiteLink: string;
-  sku?: string;  // Changed from productId to sku
+  sku?: string;
   productPhoto: File | null;
   productPhotoUrl?: string;
   productPhotoPreview: string;
@@ -31,7 +32,8 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
   const [products, setProducts] = useState<ProductDetail[]>([
     initialData || {
       productName: '',
-      sku: '',  // Changed from productId to sku
+      productDescription: '',
+      sku: '',
       units: [{ unit: '', price: '' }],
       websiteLink: '',
       productPhoto: null,
@@ -39,36 +41,11 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
     }
   ]);
 
-  // Function to fetch existing products if needed
-  /*const fetchProducts = async () => {
-    try {
-      const tenentId = localStorage.getItem('tenentid');
-      const response = await axios.get(`https://d0a7-117-247-96-193.ngrok-free.app/api/templatesroute/product-details/${tenentId}`);
-      
-      if (response.data && response.data.length > 0) {
-        // Map products from backend format to frontend format
-        const mappedProducts = response.data.map((product: any) => ({
-          productName: product.productName,
-          sku: product.sku || '',  // Map sku from backend
-          units: product.units || [{ unit: '', price: '' }],
-          websiteLink: product.websiteLink,
-          productPhoto: null,
-          productPhotoPreview: product.productPhoto || product.productPhotoUrl || '',
-          productPhotoUrl: product.productPhotoUrl || '',
-          isExternalImage: !!product.productPhotoUrl
-        }));
-        
-        setProducts(mappedProducts);
-      }
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    }
-  };*/
-
   const addProduct = () => {
     setProducts([...products, {
       productName: '',
-      sku: '',  // Changed from productId to sku
+      productDescription: '',
+      sku: '',
       units: [{ unit: '', price: '' }],
       websiteLink: '',
       productPhoto: null,
@@ -137,42 +114,89 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
   const prepareFormData = () => {
     const formData = new FormData();
     const tenentId = localStorage.getItem('tenentid');
+    
+    console.log('🏢 Tenant ID:', tenentId);
     formData.append('tenentId', tenentId || '');
 
     // Convert products array to string to preserve structure
     const productsData = products.map(product => ({
       productName: product.productName,
-      ...(product.sku && { sku: product.sku }), // Use sku directly now
+      productDescription: product.productDescription,
+      ...(product.sku && { sku: product.sku }),
       websiteLink: product.websiteLink,
       units: product.units,
       productPhotoUrl: product.isExternalImage ? product.productPhotoUrl : undefined
     }));
 
+    console.log('📦 Products Data (JSON):', productsData);
+    console.log('📦 Products Data (Stringified):', JSON.stringify(productsData));
+    
     formData.append('products', JSON.stringify(productsData));
 
     // Append files separately
     products.forEach((product, index) => {
       if (!product.isExternalImage && product.productPhoto) {
+        console.log(`📸 File for Product ${index}:`, {
+          name: product.productPhoto.name,
+          size: product.productPhoto.size,
+          type: product.productPhoto.type,
+          lastModified: product.productPhoto.lastModified
+        });
         formData.append(`products[${index}][productPhoto]`, product.productPhoto);
       }
     });
+
+    // Log all FormData entries
+    console.log('📋 FormData entries:');
+    for (let [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`  ${key}:`, {
+          fileName: value.name,
+          fileSize: value.size,
+          fileType: value.type
+        });
+      } else {
+        console.log(`  ${key}:`, value);
+      }
+    }
 
     return formData;
   };
 
   const validateProducts = () => {
-    return products.some(product =>
+    const hasEmptyFields = products.some(product =>
       !product.productName.trim() ||
       !product.websiteLink.trim() ||
       (!product.productPhoto && !product.productPhotoUrl) ||
       product.units.some(unit => !unit.unit.trim() || !unit.price.trim())
     );
+    
+    console.log('✅ Validation Result:', hasEmptyFields ? 'FAILED' : 'PASSED');
+    
+    if (hasEmptyFields) {
+      console.log('❌ Validation Details:');
+      products.forEach((product, index) => {
+        console.log(`  Product ${index + 1}:`);
+        console.log(`    - Product Name: ${product.productName.trim() ? '✓' : '✗ (empty)'}`);
+        console.log(`    - Website Link: ${product.websiteLink.trim() ? '✓' : '✗ (empty)'}`);
+        console.log(`    - Photo: ${(product.productPhoto || product.productPhotoUrl) ? '✓' : '✗ (missing)'}`);
+        product.units.forEach((unit, unitIndex) => {
+          console.log(`    - Unit ${unitIndex + 1}: ${unit.unit.trim() && unit.price.trim() ? '✓' : '✗ (empty)'}`);
+        });
+      });
+    }
+    
+    return hasEmptyFields;
   };
 
   const handleUpdate = async () => {
+    console.log('🔄 UPDATE OPERATION STARTED');
+    console.log('📊 Current Products State:', products);
+    
     try {
       // Validate required fields
       if (validateProducts()) {
+        console.log('❌ Validation failed - stopping update');
         Swal.fire({
           icon: "error",
           title: "Empty Fields",
@@ -182,8 +206,12 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
       }
 
       const formData = prepareFormData();
+      
+      console.log('🚀 Sending UPDATE request to backend...');
+      console.log('🎯 API Endpoint:', 'https://79fba8ba62d3.ngrok-free.app/api/templatesroute/product-details/update');
+      
       const response = await axios.post(
-        'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/templatesroute/product-details/update',
+        'https://79fba8ba62d3.ngrok-free.app/api/templatesroute/product-details/update',
         formData,
         {
           headers: {
@@ -192,7 +220,12 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
         }
       );
 
+      console.log('✅ UPDATE Response:', response.data);
+      console.log('📈 Response Status:', response.status);
+      console.log('📋 Response Headers:', response.headers);
+
       if (response.data) {
+        console.log('🎉 Update successful!');
         Swal.fire({
           icon: "success",
           title: "Success",
@@ -202,7 +235,8 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
         // Reset the form after successful update
         setProducts([{
           productName: '',
-          sku: '',  // Changed from productId to sku
+          productDescription: '',
+          sku: '',
           units: [{ unit: '', price: '' }],
           websiteLink: '',
           productPhoto: null,
@@ -210,8 +244,22 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
           productPhotoUrl: '',
           isExternalImage: false
         }]);
+        console.log('🔄 Form reset after successful update');
       }
     } catch (error) {
+      console.error('❌ UPDATE ERROR:', error);
+      
+      if (error instanceof AxiosError) {
+        console.error('📋 Error Details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          headers: error.response?.headers
+        });
+      } else {
+        console.error('📋 Unknown Error:', error);
+      }
+      
       Swal.fire({
         icon: "error",
         title: "Update Failed",
@@ -222,8 +270,12 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    console.log('💾 SAVE OPERATION STARTED');
+    console.log('📊 Current Products State:', products);
 
     if (validateProducts()) {
+      console.log('❌ Validation failed - stopping save');
       Swal.fire({
         icon: "error",
         title: "Empty Fields",
@@ -234,8 +286,12 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
 
     try {
       const formData = prepareFormData();
+      
+      console.log('🚀 Sending SAVE request to backend...');
+      console.log('🎯 API Endpoint:', 'https://79fba8ba62d3.ngrok-free.app/api/templatesroute/product-details');
+      
       const response = await axios.post(
-        'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/templatesroute/product-details', 
+        'https://79fba8ba62d3.ngrok-free.app/api/templatesroute/product-details', 
         formData, 
         {
           headers: {
@@ -244,15 +300,22 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
         }
       );
 
+      console.log('✅ SAVE Response:', response.data);
+      console.log('📈 Response Status:', response.status);
+      console.log('📋 Response Headers:', response.headers);
+
       if (response.data) {
+        console.log('🎉 Save successful!');
         Swal.fire({
           icon: "success",
           title: "Success",
           text: "Product details saved successfully!",
         });
+        
         setProducts([{
           productName: '',
-          sku: '',  // Changed from productId to sku
+          productDescription: '',
+          sku: '',
           units: [{ unit: '', price: '' }],
           websiteLink: '',
           productPhoto: null,
@@ -260,8 +323,22 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
           productPhotoUrl: '',
           isExternalImage: false
         }]);
+        console.log('🔄 Form reset after successful save');
       }
     } catch (error) {
+      console.error('❌ SAVE ERROR:', error);
+      
+      if (error instanceof AxiosError) {
+        console.error('📋 Error Details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          headers: error.response?.headers
+        });
+      } else {
+        console.error('📋 Unknown Error:', error);
+      }
+      
       Swal.fire({
         icon: "error",
         title: "Save Failed",
@@ -278,7 +355,6 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
       >
         ← Back
       </Link>
-      {/* Added top margin on mobile only */}
       <div className="w-full max-w-4xl mt-20 md:mt-0">
         <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
           <div className="bg-white rounded-lg shadow-md p-4 md:p-6 border border-pink-100">
@@ -318,6 +394,17 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
                       onChange={(e) => updateProduct(productIndex, 'productName', e.target.value)}
                       placeholder="e.g. Face Cream"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 placeholder-gray-400 focus:ring-2 focus:border-pink-500 focus:outline-none focus:ring-pink-500 text-sm md:text-base"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 text-sm md:text-base font-medium mb-1 md:mb-2">Product Description</label>
+                    <textarea
+                      value={product.productDescription}
+                      onChange={(e) => updateProduct(productIndex, 'productDescription', e.target.value)}
+                      placeholder="Describe your product features, benefits, and specifications..."
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 placeholder-gray-400 focus:ring-2 focus:border-pink-500 focus:outline-none focus:ring-pink-500 text-sm md:text-base resize-vertical"
                     />
                   </div>
 
@@ -377,9 +464,7 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
                             updateUnit(productIndex, unitIndex, 'price', '');
                             return;
                           }
-                          // Remove any existing ₹ symbols first
                           const valueWithoutSymbol = inputValue.replace(/₹/g, '');
-                          // Then add a single ₹ at the beginning
                           const priceWithSymbol = `${valueWithoutSymbol}`;
                           updateUnit(productIndex, unitIndex, 'price', priceWithSymbol);
                         }}

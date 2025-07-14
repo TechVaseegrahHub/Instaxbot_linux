@@ -36,7 +36,7 @@ const ProductDetailsInput = () => {
       console.log('Fetching product types with tenant ID:', tenentId);
       
       // Updated to use the new POST endpoint
-      const response = await axios.post('https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/templatesroute/Product-type-list', {
+      const response = await axios.post('https://79fba8ba62d3.ngrok-free.app/api/templatesroute/Product-type-list', {
         tenentId
       });
       
@@ -126,7 +126,7 @@ const ProductDetailsInput = () => {
 
     try {
       const tenentId = localStorage.getItem('tenentid');
-      const response = await axios.post('https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/templatesroute/product-list', {
+      const response = await axios.post('https://79fba8ba62d3.ngrok-free.app/api/templatesroute/product-list', {
         tenentId,
         products
       });

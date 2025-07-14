@@ -23,7 +23,7 @@ export default function SignupPage(): JSX.Element {
     e.preventDefault();
 
     try {
-      const response = await axios.post('https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/auth/signup', {
+      const response = await axios.post('https://79fba8ba62d3.ngrok-free.app/api/auth/signup', {
         name,
         email,
         password

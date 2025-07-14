@@ -606,7 +606,7 @@ export default function LiveChat() {
     };
     wsService.onConnect(handleConnect);
     if (!wsService.isConnected()) {
-      const appUrl = process.env.REACT_APP_API_URL || 'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app';
+      const appUrl = process.env.REACT_APP_API_URL || 'https://79fba8ba62d3.ngrok-free.app';
       wsService.connect(appUrl);
     }
     return () => {
@@ -1352,7 +1352,7 @@ const onEmojiClick = (emojiClickData: EmojiClickData) => {
       )}
       <div className="ml-3">
         <div className="font-semibold">{selectedContact.name === "Nil" ? selectedContact.username : selectedContact.name}</div>
-        <div className="text-sm text-gray-500">{selectedContact.senderId}</div>
+        
       </div>
     </div>
     

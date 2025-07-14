@@ -41,7 +41,7 @@ export default function Profile() {
         throw new Error('Required identifiers not found in local storage');
       }
       const response = await axios.get(
-        'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/profileroute/profile',
+        'https://79fba8ba62d3.ngrok-free.app/api/profileroute/profile',
         {
           headers: {
             'Content-Type': 'application/json',

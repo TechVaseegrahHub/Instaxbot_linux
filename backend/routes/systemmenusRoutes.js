@@ -5,7 +5,7 @@ const InstaxBotSystemMenu = require('../models/InstaxBotSystemMenu');
 const Signup = require('../models/Signup');
 
 // Add the app URL configuration
-const appUrl = process.env.APP_URL || 'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app';
+const appUrl = process.env.APP_URL || 'https://79fba8ba62d3.ngrok-free.app';
 
 // Input validation middleware
 const validateTenentId = (req, res, next) => {

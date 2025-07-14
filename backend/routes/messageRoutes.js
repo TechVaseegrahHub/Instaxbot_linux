@@ -15,7 +15,7 @@ const router = express.Router();
 const multer = require('multer');
 const cors = require('cors');
 const WebSocket = require('ws');
-const appUrl = process.env.APP_URL || 'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app';
+const appUrl = process.env.APP_URL || 'https://79fba8ba62d3.ngrok-free.app';
 const WS_SECRET_KEY= process.env.WS_SECRET_KEY;
 const jwt = require('jsonwebtoken');
 const broadcastedModeUpdates = new Set();
@@ -192,7 +192,7 @@ case 'get_contacts':
   try {
     const tenentId = data.tenentId;
     const page = data.page || 1;
-    const limit = data.limit || 25;
+    const limit = data.limit || 6;
     const skip = (page - 1) * limit;
 
     if (!tenentId) {
@@ -393,7 +393,7 @@ case 'get_contacts':
 
             case 'get_human_agent_contacts':
             try {
-              const { tenentId, page = 1, limit = 25 } = data;
+              const { tenentId, page = 1, limit = 6 } = data;
               
               if (!tenentId) {
                 ws.send(JSON.stringify({

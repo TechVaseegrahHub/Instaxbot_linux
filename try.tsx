@@ -1,147 +1,75 @@
-import React, { useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+ <div className="mt-6 mb-4 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="mb-6">
+              <h4 className="text-sm font-normal text-gray-800 mb-1 flex items-center">
+              <svg className="w-3.5 h-3.5 mr-1 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              Select Your Preferred Shipping Partner
+            </h4>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <p className="text-xs text-gray-600 font-normal">Standard shipping charge: ₹50</p>
+                <p className="text-xs text-gray-500 italic bg-gray-50 px-2 py-0.5 rounded-full">
+                  Final charges calculated at checkout
+                </p>
+              </div>
+            </div>
 
-const CategoryCarousel = ({ categories, selectedCategory, onCategorySelect }) => {
-  const scrollContainerRef = useRef(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
-
-  const checkScrollButtons = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth);
-    }
-  };
-
-  const scrollLeft = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
-      setTimeout(checkScrollButtons, 300);
-    }
-  };
-
-  const scrollRight = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
-      setTimeout(checkScrollButtons, 300);
-    }
-  };
-
-  React.useEffect(() => {
-    checkScrollButtons();
-    
-    const handleResize = () => checkScrollButtons();
-    window.addEventListener('resize', handleResize);
-    
-    return () => window.removeEventListener('resize', handleResize);
-  }, [categories]);
-
-  return (
-    <div className="relative mb-6">
-      {/* Left Arrow */}
-      <button
-        onClick={scrollLeft}
-        className={`absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white shadow-lg rounded-full p-2 transition-opacity ${
-          canScrollLeft ? 'opacity-100' : 'opacity-50 cursor-not-allowed'
-        }`}
-        disabled={!canScrollLeft}
-      >
-        <ChevronLeft className="w-5 h-5 text-gray-600" />
-      </button>
-
-      {/* Categories Container */}
-      <div
-        ref={scrollContainerRef}
-        className="flex overflow-x-auto scrollbar-hide space-x-4 mx-10 pb-2"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        onScroll={checkScrollButtons}
-      >
-        {categories.map((category) => (
-          <button
-            key={category}
-            onClick={() => onCategorySelect(category)}
-            className={`flex-shrink-0 px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
-              selectedCategory === category
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
-
-      {/* Right Arrow */}
-      <button
-        onClick={scrollRight}
-        className={`absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-white shadow-lg rounded-full p-2 transition-opacity ${
-          canScrollRight ? 'opacity-100' : 'opacity-50 cursor-not-allowed'
-        }`}
-        disabled={!canScrollRight}
-      >
-        <ChevronRight className="w-5 h-5 text-gray-600" />
-      </button>
-
-      {/* Custom CSS to hide scrollbar */}
-      <style jsx>{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
-    </div>
-  );
-};
-
-// Instructions for integration:
-// 1. Add this CategoryCarousel component to your ProductCatalog.tsx file
-// 2. Replace the existing category navigation section with:
-// <CategoryCarousel 
-//   categories={categories}
-//   selectedCategory={selectedCategory}
-//   onCategorySelect={setSelectedCategory}
-// />
-
-// Example showing how to use it in your ProductCatalog
-const ProductCatalogWithCarousel = () => {
-  const [selectedCategory, setSelectedCategory] = useState('Herbal Tea');
-  
-  const categories = [
-    'Herbal Tea',
-    'Baby Care',
-    'Carrier Oils',
-    'Carrier oils',
-    'Country Jaggery',
-    'Eco Accessories',
-    'Edible Oils',
-    'Hair Care',
-    'Health Care',
-    'Honey',
-    'Organic Spices',
-    'Personal Care',
-    'Wellness'
-  ];
-
-  return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8 text-center">Product Catalog</h1>
-      
-      <CategoryCarousel 
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onCategorySelect={setSelectedCategory}
-      />
-      
-      <div className="mt-8 p-6 bg-gray-50 rounded-lg">
-        <h2 className="text-xl font-semibold mb-4">Selected Category:</h2>
-        <p className="text-lg text-blue-600">{selectedCategory}</p>
-      </div>
-    </div>
-  );
-};
-
-export default ProductCatalogWithCarousel;
+            <div className="relative">
+              <select
+                className="w-full p-2.5 text-sm font-normalbg-white border-2 border-gray-200 rounded-lg shadow-sm 
+                          focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 
+                          text-lg font-medium text-gray-700 cursor-pointer
+                          hover:border-gray-300 transition-all duration-200
+                          appearance-none bg-no-repeat bg-right pr-12"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 1rem center',
+                  backgroundSize: '1rem'
+                }}
+                value={shippingDetails.shippingPartner?.id || ''}
+                onChange={(e) => {
+                  const selectedMethod = shippingMethods.find(method => method._id === e.target.value);
+                  if (selectedMethod) {
+                    handleShippingPartnerSelect(selectedMethod);
+                  }
+                }}
+              >
+                <option value="" disabled className="text-gray-400">
+                  Choose your shipping partner
+                </option>
+                {shippingMethods.map((method) => (
+                  <option key={method._id} value={method._id} className="text-lg py-2 text-gray-700">
+                    {method.name} 
+                    {method.type === 'FREE_SHIPPING' ? (
+                      cart.total >= (method.minAmount || 0) ? 
+                        " • FREE SHIPPING" : 
+                        ` • Free on orders above ₹${method.minAmount || 0}`
+                    ) : (
+                      ` • ₹${method.fixedRate || 0}`
+                    )}
+                  </option>
+                ))}
+              </select>
+              
+              {/* Custom dropdown arrow */}
+              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+            
+            {/* Optional: Add selected shipping info display */}
+            {shippingDetails.shippingPartner && (
+              <div className="mt-3 p-2.5 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-green-800 text-sm font-normal">
+                    Selected: {shippingDetails.shippingPartner.name}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>

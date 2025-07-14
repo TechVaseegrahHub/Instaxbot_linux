@@ -33,6 +33,10 @@ const productDetailSchema = new mongoose.Schema({
     type: String,  // Store the photo URL
     
   },
+  productDescription:{
+    type: String,  // Store the photo URL
+    
+  },
   sku:{
     type: String,  // Store the photo URL
   },

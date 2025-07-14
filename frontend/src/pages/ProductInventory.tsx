@@ -46,7 +46,7 @@ const ProductInventory: React.FC = () => {
     try {
       const tenentId = localStorage.getItem('tenentid');
       
-      const response = await axios.get('https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/productinventoryroute/inventory', {
+      const response = await axios.get('https://79fba8ba62d3.ngrok-free.app/api/productinventoryroute/inventory', {
         params: { tenentId }
       });
       
@@ -164,7 +164,7 @@ const ProductInventory: React.FC = () => {
       };
       
       const response = await axios.put(
-        `https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/productinventoryroute/inventory/${editingProduct.id}`,
+        `https://79fba8ba62d3.ngrok-free.app/api/productinventoryroute/inventory/${editingProduct.id}`,
         productData
       );
       
@@ -221,7 +221,7 @@ const ProductInventory: React.FC = () => {
         try {
           const tenentId = localStorage.getItem('tenentid');
           
-          await axios.delete(`https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/productinventoryroute/inventory/${id}`, {
+          await axios.delete(`https://79fba8ba62d3.ngrok-free.app/api/productinventoryroute/inventory/${id}`, {
             params: { tenentId }
           });
           
@@ -272,7 +272,7 @@ const ProductInventory: React.FC = () => {
           const status = calculateStatus(newQuantity, product.threshold);
           
           const response = await axios.post(
-            `https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/productinventoryroute/inventory/${id}/restock`,
+            `https://79fba8ba62d3.ngrok-free.app/api/productinventoryroute/inventory/${id}/restock`,
             {
               tenentId,
               addQuantity: quantity,

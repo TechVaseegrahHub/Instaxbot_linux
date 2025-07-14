@@ -302,6 +302,7 @@ router.delete('/product-list/:productId', async (req, res) => {
 });
 
 // Updated route handler for product details
+// Updated route handler for product details
 router.post('/product-details', upload, async (req, res) => {
   try {
     const { tenentId, products } = req.body;
@@ -336,16 +337,23 @@ router.post('/product-details', upload, async (req, res) => {
         return res.status(400).json({ error: `Missing photo for product ${i + 1}` });
       }
 
-      // Include sku in the product document only if it exists
-      const productDetail = new ProductDetail({
+      // Create product object - FIXED: Always include productDescription
+      const productData = {
         tenentId,
         productName: product.productName,
-        ...(product.sku && { sku: product.sku }), // Use sku directly
+        productDescription: product.productDescription || '', // Always include, default to empty string
         units: product.units,
         websiteLink: product.websiteLink,
         ...productPhotoField
-      });
+      };
 
+      // Only add sku if it exists and is not empty
+      if (product.sku && product.sku.trim() !== '') {
+        productData.sku = product.sku;
+      }
+
+      const productDetail = new ProductDetail(productData);
+      console.log("productDetail",productDetail);
       const savedProduct = await productDetail.save();
       savedProducts.push(savedProduct);
     }
@@ -406,13 +414,18 @@ router.post('/product-details/update', upload, async (req, res) => {
       let savedProduct;
       
       if (existingProduct) {
-        // Update existing product with proper sku handling
+        // Update existing product - FIXED: Always include productDescription
         const updateData = {
+          productDescription: product.productDescription || '', // Always include
           websiteLink: product.websiteLink,
           units: product.units,
-          ...(product.sku && { sku: product.sku }), // Use sku directly instead of productId
           ...productPhotoField
         };
+
+        // Only add sku if it exists and is not empty
+        if (product.sku && product.sku.trim() !== '') {
+          updateData.sku = product.sku;
+        }
 
         savedProduct = await ProductDetail.findOneAndUpdate(
           { _id: existingProduct._id },
@@ -420,16 +433,22 @@ router.post('/product-details/update', upload, async (req, res) => {
           { new: true }
         );
       } else {
-        // Create new product with proper sku handling
-        const productDetail = new ProductDetail({
+        // Create new product - FIXED: Always include productDescription
+        const productData = {
           tenentId,
           productName: product.productName,
-          ...(product.sku && { sku: product.sku }), // Use sku directly
+          productDescription: product.productDescription || '', // Always include
           units: product.units,
           websiteLink: product.websiteLink,
           ...productPhotoField
-        });
+        };
 
+        // Only add sku if it exists and is not empty
+        if (product.sku && product.sku.trim() !== '') {
+          productData.sku = product.sku;
+        }
+
+        const productDetail = new ProductDetail(productData);
         savedProduct = await productDetail.save();
       }
 
@@ -446,7 +465,6 @@ router.post('/product-details/update', upload, async (req, res) => {
     res.status(500).json({ error: 'Failed to save/update product details' });
   }
 });
-
 // Add this route to get product details by tenant ID
 router.get('/product-details/:tenentId', async (req, res) => {
   try {

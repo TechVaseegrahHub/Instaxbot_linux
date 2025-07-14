@@ -42,7 +42,7 @@ export default function Embed() {
 
     const instagramOAuthUrl =
     'https://www.instagram.com/oauth/authorize?enable_fb_login=0&force_authentication=1&' +
-        `client_id=1577839799518386&redirect_uri=https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api/instagram_authroute/auth/instagram/callback&response_type=code&scope=instagram_business_basic%2Cinstagram_business_manage_messages%2Cinstagram_business_manage_comments&state=${tenantId || ''}`; // Navigate to provided URL or default to '/dashboard'
+        `client_id=1628360401362198&redirect_uri=https://79fba8ba62d3.ngrok-free.app/api/instagram_authroute/auth/instagram/callback&response_type=code&scope=instagram_business_basic%2Cinstagram_business_manage_messages%2Cinstagram_business_manage_comments&state=${tenantId || ''}`; // Navigate to provided URL or default to '/dashboard'
 
     const popupWidth = 600;
     const popupHeight = 700;

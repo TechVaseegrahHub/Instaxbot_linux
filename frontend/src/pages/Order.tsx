@@ -56,7 +56,7 @@ const OrderManagement = () => {
   const [expandedAddresses, setExpandedAddresses] = useState(new Set<string>());
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://8def-2401-4900-8827-18db-d531-34b1-a4f4-2ef9.ngrok-free.app/api';
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://79fba8ba62d3.ngrok-free.app/api';
   
   const statusOptions = [
     'CREATED', 'PENDING', 'PROCESSING', 'PAID', 

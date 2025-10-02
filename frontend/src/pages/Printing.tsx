@@ -156,7 +156,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
     phone: "",
   })
   const [hasCheckedForAddress, setHasCheckedForAddress] = useState(false)
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateType | null>(null)
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateType | null >(null)
   const [templates, setTemplates] = useState<TemplateType[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(false)
   const [showTemplateEdit, setShowTemplateEdit] = useState(false)
@@ -436,7 +436,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
     }
   }
 
-  // IMPROVED UNIFIED LAYOUT GENERATOR - Fixed spacing and alignment calculations
+  // UNIFIED LAYOUT GENERATOR - Single source of truth for both print and PDF
   const generateUnifiedLayoutData = (
     billData: any,
     template: TemplateType | null,
@@ -448,31 +448,49 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
     const templateWidthPt = templateWidth * 0.75 // Convert px to pt (96 DPI)
     const templateHeightPt = templateHeight * 0.75
 
-    // IMPROVED Template-specific styling with better proportions
+    // Template-specific styling (EXACT same values for print and PDF)
     let styling
     if (template?.id === "2x4" || templateWidth <= 192) {
       styling = {
-        baseFontSize: 7,
-        titleFontSize: 8,
-        smallFontSize: 6,
-        lineHeight: 1.1,
+        baseFontSize: 6,
+        titleFontSize: 7,
+        smallFontSize: 5,
+        lineHeight: 1.0,
         letterSpacing: "normal",
-        marginPx: 6,
-        marginPt: 4.5,
-        paddingPx: 4,
-        paddingPt: 3,
-        borderWidthPx: 1,
-        borderWidthPt: 0.75,
-        topPaddingAdjustment: 6,
-        sectionSpacing: 3,
-        barcodeWidth: 1.2,
-        barcodeHeight: 25,
+        marginPx: 8,
+        marginPt: 6,
+        paddingPx: 3,
+        paddingPt: 2.25,
+        borderWidthPx: 1.5,
+        borderWidthPt: 1.125,
+        topPaddingAdjustment: 4,
+        sectionSpacing: 4,
+        barcodeWidth: 1.0,
+        barcodeHeight: 30,
       }
     } else if (template?.id === "4x4" || templateWidth <= 384) {
       styling = {
-        baseFontSize: 10,
-        titleFontSize: 11,
-        smallFontSize: 9,
+        baseFontSize: 9,
+        titleFontSize: 10,
+        smallFontSize: 8,
+        lineHeight: 1.1,
+        letterSpacing: "normal",
+        marginPx: 8,
+        marginPt: 6,
+        paddingPx: 4,
+        paddingPt: 3,
+        borderWidthPx: 1.5,
+        borderWidthPt: 1.125,
+        topPaddingAdjustment: 4,
+        sectionSpacing: 4,
+        barcodeWidth: 1.0,
+        barcodeHeight: 35,
+      }
+    } else {
+      styling = {
+        baseFontSize: 11,
+        titleFontSize: 12,
+        smallFontSize: 10,
         lineHeight: 1.2,
         letterSpacing: "normal",
         marginPx: 8,
@@ -481,28 +499,10 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
         paddingPt: 3.75,
         borderWidthPx: 1.5,
         borderWidthPt: 1.125,
-        topPaddingAdjustment: 6,
-        sectionSpacing: 5,
-        barcodeWidth: 1.2,
-        barcodeHeight: 30,
-      }
-    } else {
-      styling = {
-        baseFontSize: 12,
-        titleFontSize: 13,
-        smallFontSize: 11,
-        lineHeight: 1.3,
-        letterSpacing: "normal",
-        marginPx: 10,
-        marginPt: 7.5,
-        paddingPx: 6,
-        paddingPt: 4.5,
-        borderWidthPx: 1.5,
-        borderWidthPt: 1.125,
-        topPaddingAdjustment: 8,
-        sectionSpacing: 6,
-        barcodeWidth: 1.2,
-        barcodeHeight: 35,
+        topPaddingAdjustment: 4,
+        sectionSpacing: 4,
+        barcodeWidth: 1.0,
+        barcodeHeight: 40,
       }
     }
 
@@ -534,37 +534,41 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
       phone: billData.organisation_details?.phone || fromAddr.phone,
     }
 
-    // IMPROVED Format products text with better truncation logic
+    // Format products text (EXACT same formatting)
     const formatProductsList = (products: Array<{ productName?: string; name?: string; quantity: number }>): string => {
       if (!products || products.length === 0) {
         return "No products"
       }
-
-      const maxLength = template?.id === "2x4" ? 12 : template?.id === "4x4" ? 20 : 30
-
+    
+      // Add debug logging
+      console.log("Formatting products:", products)
+    
+      if (template?.id === "2x4") {
+        return products
+          .map((product) => {
+            const productName = product.productName || product.name
+            const truncatedName =
+              productName && productName.length > 10 ? productName.substring(0, 9) + "…" : productName
+            return `${truncatedName} × ${product.quantity}`
+          })
+          .join(", ")
+      }
+    
       return products
         .map((product) => {
-          const productName = product.productName || product.name || "Unknown Product"
-          const truncatedName =
-            productName.length > maxLength ? productName.substring(0, maxLength - 1) + "…" : productName
-          return `${truncatedName} × ${product.quantity}`
+          const productName = product.productName || product.name
+          return `${productName} × ${product.quantity}`
         })
         .join(", ")
     }
-
+    
     const productText = formatProductsList(formattedOrder.products)
+    console.log("Generated product text:", productText)
 
-    // IMPROVED Calculate box dimensions with better proportions and spacing
-    const availableHeight = templateHeightPt - 2 * styling.marginPt - styling.topPaddingAdjustment
-    const headerHeight = styling.titleFontSize * 3 // Ship via + Order ID + spacing
-    const barcodeHeight = styling.barcodeHeight + 20 // Barcode + margins
-    const remainingHeight = availableHeight - headerHeight - barcodeHeight
+    // Calculate box dimensions (EXACT same calculations)
+    const toAddressBoxHeight = templateHeightPt * 0.28
+    const detailBoxHeight = templateHeightPt * 0.22
 
-    // Adjust box heights to ensure product section starts below mobile number
-    const toAddressBoxHeight = Math.max(remainingHeight * 0.32, 55) // Slightly reduced
-    const detailBoxHeight = Math.max(remainingHeight * 0.32, 55) // Increased to accommodate mobile number
-    const productSectionSpacing = styling.sectionSpacing + 2 // Extra spacing between boxes
-    console.log(productSectionSpacing)
     return {
       templateWidth,
       templateHeight,
@@ -584,7 +588,7 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
     return new Promise((resolve) => {
       try {
         const canvas = document.createElement("canvas")
-        canvas.width = layout.barcodeWidth * 80
+        canvas.width = layout.barcodeWidth * 60
         canvas.height = layout.barcodeHeight
 
         if (typeof window !== "undefined" && window.JsBarcode) {
@@ -608,8 +612,8 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
     })
   }
 
-  // IMPROVED UNIFIED PRINT CONTENT GENERATOR with better box alignment
-  const generatePrintContent = (layout: UnifiedLayoutData, barcodeDataUrl = ""): string => {
+  // UNIFIED PRINT CONTENT GENERATOR - Used by both print preview and PDF
+  /*const generatePrintContent = (layout: UnifiedLayoutData, barcodeDataUrl = ""): string => {
     const { formattedOrder, fromAddress: fromAddr } = layout
 
     return `
@@ -626,26 +630,21 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
               margin: 0;
             }
             body {
-              margin: 0 !important;
-              padding: 0 !important;
+              margin: 0;
+              padding: 0;
               width: ${layout.templateWidth}px !important;
               height: ${layout.templateHeight}px !important;
               max-height: ${layout.templateHeight}px !important;
-              overflow: hidden !important;
             }
             .container {
               width: 100% !important;
               height: 100% !important;
               page-break-after: always;
-              overflow: hidden !important;
+              overflow: visible !important;
               box-sizing: border-box;
               padding: ${layout.paddingPx}px !important;
               border: 0 !important;
             }
-          }
-
-          * {
-            box-sizing: border-box;
           }
 
           html, body {
@@ -666,16 +665,13 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
             box-sizing: border-box;
             position: relative;
             border: 0;
-            display: flex;
-            flex-direction: column;
           }
 
           .header {
             font-size: ${layout.baseFontSize}px;
             font-weight: normal;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
             text-align: left;
-            flex-shrink: 0;
           }
 
           .order-id {
@@ -683,7 +679,6 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
             font-weight: normal;
             margin-bottom: 6px;
             text-align: center;
-            flex-shrink: 0;
           }
 
           .barcode-wrapper {
@@ -694,7 +689,6 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
             justify-content: center;
             align-items: center;
             width: 100%;
-            flex-shrink: 0;
           }
 
           .barcode-img {
@@ -706,19 +700,13 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
             border: ${layout.borderWidthPx}px solid #000;
             padding: ${layout.paddingPx}px;
             margin-bottom: ${layout.sectionSpacing}px;
-            height: ${layout.toAddressBoxHeight}px;
-            overflow: hidden;
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
+            min-height: 65px;
           }
 
           .to-name {
             font-weight: bold;
             font-size: ${layout.baseFontSize}px;
             margin-bottom: 2px;
-            line-height: ${layout.lineHeight};
           }
 
           .address-line {
@@ -731,25 +719,19 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: ${layout.sectionSpacing}px;
-            margin-bottom: ${layout.sectionSpacing + 2}px;
-            flex-shrink: 0;
+            margin-bottom: ${layout.sectionSpacing}px;
           }
 
           .detail-box {
             border: ${layout.borderWidthPx}px solid #000;
             padding: ${layout.paddingPx}px;
-            height: ${layout.detailBoxHeight}px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
+            min-height: 75px;
           }
 
           .detail-title {
             font-weight: bold;
             font-size: ${layout.baseFontSize}px;
             margin-bottom: 2px;
-            line-height: ${layout.lineHeight};
           }
 
           .detail-line {
@@ -761,29 +743,19 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
           .product-section {
             border: ${layout.borderWidthPx}px solid #000;
             padding: ${layout.paddingPx}px;
-            flex: 1;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
             margin-top: ${layout.sectionSpacing}px;
-            min-height: 0;
+            min-height: 35px;
           }
 
           .product-title {
             font-weight: bold;
             font-size: ${layout.baseFontSize}px;
             margin-bottom: 2px;
-            line-height: ${layout.lineHeight};
-            flex-shrink: 0;
           }
 
           .product-list {
             font-size: ${layout.smallFontSize}px;
             line-height: ${layout.lineHeight};
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            flex: 1;
-            overflow: hidden;
           }
         </style>
       </head>
@@ -865,418 +837,393 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
       </body>
     </html>
   `
-  }
+  }*/
 
-  // IMPROVED PDF GENERATOR with better alignment
-  const downloadBillDataAsPDF = async (billId: string, billData?: any) => {
+  // EXACT MATCH PDF GENERATOR - Uses the same layout data as print preview
+  const downloadBillDataAsPDF = async (
+    billId: string,
+    billData?: any,
+    templateToUse?: TemplateType
+  ) => {
     try {
-      let dataToDownload = billData
-
+      let dataToDownload = billData;
+  
       if (!dataToDownload && billId) {
         const response = await publicApi.get(`/api/printingroute/print-bill/${billId}`, {
-          headers: {
-            "tenent-id": tenentId || "",
-          },
-        })
-        dataToDownload = response.data
+          headers: { "tenent-id": tenentId || "" },
+        });
+        dataToDownload = response.data;
       }
-
+  
       if (!dataToDownload) {
-        console.error("No bill data available for download")
-        return
+        console.error("No bill data available for download");
+        alert("No bill data available for PDF generation");
+        return;
       }
-
-      // Generate EXACT same layout data as print preview
-      const layout = generateUnifiedLayoutData(dataToDownload, selectedTemplate, previewFromAddress)
-
-      // Create PDF with exact template dimensions
+  
+      const templateForPdf = templateToUse || selectedTemplate;
+      
+      if (!templateForPdf) {
+        console.error("No template available for PDF generation");
+        alert("Please select a template before generating PDF");
+        return;
+      }
+  
+      console.log("PDF Generation - Using template:", templateForPdf.name, templateForPdf.id);
+  
+      const layout = generateUnifiedLayoutData(
+        dataToDownload,
+        templateForPdf,
+        previewFromAddress
+      );
+  
+      const barcodeDataUrl = await generateBarcodeImage(layout.formattedOrder.id, layout);
+  
+      // ✅ USE EXACT TEMPLATE DIMENSIONS - Don't override!
       const doc = new jsPDF({
-        orientation: layout.templateWidthPt > layout.templateHeightPt ? "landscape" : "portrait",
+        orientation: "portrait",
         unit: "pt",
-        format: [layout.templateWidthPt, layout.templateHeightPt],
-      })
-
-      doc.setProperties({
-        title: `Bill ${billId}`,
-        subject: `Bill ${billId}`,
-        author: layout.fromAddress.name,
-        creator: "Print Management System",
-      })
-
-      // Generate barcode with EXACT same settings as print
-      const barcodeDataUrl = await generateBarcodeImage(layout.formattedOrder.id, layout)
-
-      // Use EXACT positioning as print layout - start with proper top margin
-      let yPos = layout.marginPt + layout.topPaddingAdjustment
-
-      // Ship Via header - EXACT same styling as print
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(layout.baseFontSize)
-      doc.text(`Ship Via: ${layout.formattedOrder.shipVia}`, layout.marginPt, yPos)
-      yPos += layout.baseFontSize * 1.5
-
-      // Order ID (centered) - EXACT same styling as print
-      const orderText = `${layout.fromAddress.name} Order ID: ${layout.formattedOrder.id}`
-      const textWidth = doc.getTextWidth(orderText)
-      doc.text(orderText, (layout.templateWidthPt - textWidth) / 2, yPos)
-      yPos += layout.baseFontSize * 1.8
-
-      // Add barcode EXACTLY as in print
+        format: [layout.templateWidthPt, layout.templateHeightPt], // Use template dimensions exactly
+      });
+  
+      let yPos = layout.marginPt;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(layout.baseFontSize);
+  
+      // Header
+      doc.text(`Ship Via: ${layout.formattedOrder.shipVia}`, layout.marginPt, yPos);
+      yPos += 14;
+  
+      // Order ID (centered)
+      const title = `${layout.fromAddress.name} Order ID: ${layout.formattedOrder.id}`;
+      const titleWidth = doc.getTextWidth(title);
+      doc.text(title, (layout.templateWidthPt - titleWidth) / 2, yPos);
+      yPos += 12;
+  
+      // Barcode
       if (barcodeDataUrl) {
-        const barcodeWidthPt = layout.barcodeWidth * 80 * 0.75
-        const barcodeHeightPt = layout.barcodeHeight * 0.75
+        const barcodeWidth = layout.barcodeWidth * 60; // Match the canvas width from generateBarcodeImage
+        const barcodeHeight = layout.barcodeHeight;
         doc.addImage(
-          barcodeDataUrl,
-          "PNG",
-          (layout.templateWidthPt - barcodeWidthPt) / 2,
-          yPos,
-          barcodeWidthPt,
-          barcodeHeightPt,
-        )
-        yPos += barcodeHeightPt + 12
+          barcodeDataUrl, 
+          "PNG", 
+          (layout.templateWidthPt - barcodeWidth) / 2, 
+          yPos, 
+          barcodeWidth, 
+          barcodeHeight
+        );
+        yPos += barcodeHeight + 8;
       } else {
-        yPos += 35
+        yPos += layout.barcodeHeight + 8;
       }
+  
+      // TO Address Box - Use layout-calculated height
+      doc.setLineWidth(layout.borderWidthPt);
+      doc.rect(layout.marginPt, yPos, layout.templateWidthPt - 2 * layout.marginPt, layout.toAddressBoxHeight);
+      
+      let addrY = yPos + 12;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(layout.titleFontSize);
+      doc.text(`TO ${layout.formattedOrder.toAddress.name}`, layout.marginPt + layout.paddingPt, addrY);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(layout.baseFontSize);
+      addrY += 12;
 
-      // TO Address box - EXACT same layout as print with proper height
-      doc.setLineWidth(layout.borderWidthPt)
-      doc.rect(layout.marginPt, yPos, layout.templateWidthPt - 2 * layout.marginPt, layout.toAddressBoxHeight)
+      // Logic to split long street address
+      const addressMaxWidth = layout.templateWidthPt - (2 * layout.marginPt) - (2 * layout.paddingPt);
+      const streetLines = doc.splitTextToSize(layout.formattedOrder.toAddress.street, addressMaxWidth);
+      streetLines.forEach((line: string) => {
+        doc.text(line, layout.marginPt + layout.paddingPt, addrY);
+        addrY += 10; // Increment Y for each line of the street address
+      });
 
-      let addressYPos = yPos + layout.paddingPt + 8
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(layout.baseFontSize)
-      doc.text(`TO ${layout.formattedOrder.toAddress.name}`, layout.marginPt + layout.paddingPt, addressYPos)
-
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(layout.baseFontSize)
-      addressYPos += layout.baseFontSize * layout.lineHeight
-
-      const fullStreet =
-        (dataToDownload.customer_details.flat_no ? dataToDownload.customer_details.flat_no + ", " : "") +
-        layout.formattedOrder.toAddress.street
-      doc.text(fullStreet, layout.marginPt + layout.paddingPt, addressYPos)
-      addressYPos += layout.baseFontSize * layout.lineHeight
-      doc.text(layout.formattedOrder.toAddress.city, layout.marginPt + layout.paddingPt, addressYPos)
-      addressYPos += layout.baseFontSize * layout.lineHeight
-      doc.text(
-        `${layout.formattedOrder.toAddress.state} ${layout.formattedOrder.toAddress.zipCode}`,
-        layout.marginPt + layout.paddingPt,
-        addressYPos,
-      )
-      addressYPos += layout.baseFontSize * layout.lineHeight
-      doc.text(layout.formattedOrder.toAddress.phone, layout.marginPt + layout.paddingPt, addressYPos)
-
-      yPos += layout.toAddressBoxHeight + layout.sectionSpacing
-
-      // From and Order details (two columns) - EXACT same layout as print
-      const colWidth = (layout.templateWidthPt - 3 * layout.marginPt - layout.sectionSpacing) / 2
-
-      // From address box
-      doc.setLineWidth(layout.borderWidthPt)
-      doc.rect(layout.marginPt, yPos, colWidth, layout.detailBoxHeight)
-      let fromYPos = yPos + layout.paddingPt + 8
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(layout.baseFontSize)
-      doc.text("From:", layout.marginPt + layout.paddingPt, fromYPos)
-
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(layout.smallFontSize)
-      fromYPos += layout.baseFontSize * layout.lineHeight
-      doc.text(layout.fromAddress.name, layout.marginPt + layout.paddingPt, fromYPos)
-      fromYPos += layout.smallFontSize * layout.lineHeight
-      doc.text(layout.fromAddress.street, layout.marginPt + layout.paddingPt, fromYPos)
-      fromYPos += layout.smallFontSize * layout.lineHeight
-      doc.text(layout.fromAddress.city, layout.marginPt + layout.paddingPt, fromYPos)
-      fromYPos += layout.smallFontSize * layout.lineHeight
-      doc.text(
-        `${layout.fromAddress.state}-${layout.fromAddress.zipCode}`,
-        layout.marginPt + layout.paddingPt,
-        fromYPos,
-      )
-      fromYPos += layout.smallFontSize * layout.lineHeight
-      doc.text(`Mobile: ${layout.fromAddress.phone}`, layout.marginPt + layout.paddingPt, fromYPos)
-
-      // Order details box
-      const rightColX = layout.marginPt + colWidth + layout.sectionSpacing
-      doc.setLineWidth(layout.borderWidthPt)
-      doc.rect(rightColX, yPos, colWidth, layout.detailBoxHeight)
-      let orderYPos = yPos + layout.paddingPt + 8
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(layout.baseFontSize)
-      doc.text("Prepaid Order:", rightColX + layout.paddingPt, orderYPos)
-
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(layout.smallFontSize)
-      orderYPos += layout.baseFontSize * layout.lineHeight
-      doc.text(`Date: ${layout.formattedOrder.orderDate}`, rightColX + layout.paddingPt, orderYPos)
-      orderYPos += layout.smallFontSize * layout.lineHeight
-      doc.text(`Weight:`, rightColX + layout.paddingPt, orderYPos)
-      orderYPos += layout.smallFontSize * layout.lineHeight
-      doc.text(`No. of Items: ${layout.formattedOrder.totalItems}`, rightColX + layout.paddingPt, orderYPos)
-      orderYPos += layout.smallFontSize * layout.lineHeight
-      doc.text("Source: Instagram", rightColX + layout.paddingPt, orderYPos)
-      orderYPos += layout.smallFontSize * layout.lineHeight
-      doc.text("Packed By:", rightColX + layout.paddingPt, orderYPos)
-
-      yPos += layout.detailBoxHeight + layout.sectionSpacing + 2 // Extra spacing before product section
-
-      // Products section - EXACT same layout as print
-      const remainingHeight = layout.templateHeightPt - yPos - layout.marginPt
-      doc.setLineWidth(layout.borderWidthPt)
-      doc.rect(layout.marginPt, yPos, layout.templateWidthPt - 2 * layout.marginPt, remainingHeight)
-
-      let productYPos = yPos + layout.paddingPt + 8
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(layout.baseFontSize)
-      doc.text("Products:", layout.marginPt + layout.paddingPt, productYPos)
-
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(layout.smallFontSize)
-      productYPos += layout.baseFontSize * layout.lineHeight
-
-      const maxWidth = layout.templateWidthPt - 2 * layout.marginPt - 2 * layout.paddingPt
-      const lines = doc.splitTextToSize(layout.productText, maxWidth)
-
-      lines.forEach((line: string) => {
-        if (productYPos < layout.templateHeightPt - layout.marginPt - layout.paddingPt) {
-          doc.text(line, layout.marginPt + layout.paddingPt, productYPos)
-          productYPos += layout.smallFontSize * layout.lineHeight
+      doc.text(layout.formattedOrder.toAddress.city, layout.marginPt + layout.paddingPt, addrY);
+      addrY += 10;
+      doc.text(`${layout.formattedOrder.toAddress.state} - ${layout.formattedOrder.toAddress.zipCode}`, layout.marginPt + layout.paddingPt, addrY);
+      addrY += 10;
+      doc.text(`Phone: ${layout.formattedOrder.toAddress.phone}`, layout.marginPt + layout.paddingPt, addrY);
+      
+      yPos += layout.toAddressBoxHeight + layout.sectionSpacing;
+  
+      // FROM + ORDER Details (Side-by-side boxes) - Use layout-calculated height
+      const boxWidth = (layout.templateWidthPt - 3 * layout.marginPt) / 2;
+  
+      // FROM Box
+      doc.rect(layout.marginPt, yPos, boxWidth, layout.detailBoxHeight);
+      let fy = yPos + 12;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(layout.titleFontSize);
+      doc.text("From:", layout.marginPt + layout.paddingPt, fy);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(layout.smallFontSize);
+      fy += 12;
+      doc.text(layout.fromAddress.name, layout.marginPt + layout.paddingPt, fy);
+      fy += 10;
+      doc.text(layout.fromAddress.street, layout.marginPt + layout.paddingPt, fy);
+      fy += 10;
+      doc.text(layout.fromAddress.city, layout.marginPt + layout.paddingPt, fy);
+      fy += 10;
+      doc.text(`${layout.fromAddress.state}-${layout.fromAddress.zipCode}`, layout.marginPt + layout.paddingPt, fy);
+      fy += 10;
+      doc.text(`Mobile: ${layout.fromAddress.phone}`, layout.marginPt + layout.paddingPt, fy);
+  
+      // ORDER Box
+      const rx = layout.marginPt + boxWidth + layout.marginPt;
+      doc.rect(rx, yPos, boxWidth, layout.detailBoxHeight);
+      let ry = yPos + 12;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(layout.titleFontSize);
+      doc.text("Prepaid Order:", rx + layout.paddingPt, ry);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(layout.smallFontSize);
+      ry += 12;
+      doc.text(`Date: ${layout.formattedOrder.orderDate}`, rx + layout.paddingPt, ry);
+      ry += 10;
+      doc.text(`Weight: ${layout.formattedOrder.weight || "0.5 kg"}`, rx + layout.paddingPt, ry);
+      ry += 10;
+      doc.text(`No. of Items: ${layout.formattedOrder.totalItems}`, rx + layout.paddingPt, ry);
+      ry += 10;
+      doc.text("Source: Instagram", rx + layout.paddingPt, ry);
+      ry += 10;
+      doc.text("Packed By: Team", rx + layout.paddingPt, ry);
+  
+      yPos += layout.detailBoxHeight + layout.sectionSpacing;
+  
+      // Products Box - Use remaining space in template
+      const remainingHeight = layout.templateHeightPt - yPos - layout.marginPt;
+      doc.rect(layout.marginPt, yPos, layout.templateWidthPt - 2 * layout.marginPt, remainingHeight);
+      
+      let py = yPos + 12;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(layout.titleFontSize);
+      doc.text("Products:", layout.marginPt + layout.paddingPt, py);
+      
+      py += 12;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(layout.smallFontSize);
+  
+      // Split and add products text
+      const maxWidth = layout.templateWidthPt - 2 * layout.marginPt - 2 * layout.paddingPt;
+      const productLines = doc.splitTextToSize(layout.productText, maxWidth);
+      
+      productLines.forEach((line: string) => {
+        if (py < layout.templateHeightPt - layout.marginPt - 5) {
+          doc.text(line, layout.marginPt + layout.paddingPt, py);
+          py += 10;
         }
-      })
-
-      // Save with exact same filename format as original
-      doc.save(`bill_${selectedTemplate?.name || "default"}_${billId}_${new Date().toISOString().split("T")[0]}.pdf`)
-
-      console.log(
-        `Bill for ${billId} downloaded as PDF with EXACT print preview match using ${selectedTemplate?.name || "default"} template`,
-      )
+      });
+  
+      // Save with template-specific filename
+      const fileName = `bill_${layout.templateWidth}x${layout.templateHeight}_${layout.formattedOrder.id}_${new Date().toISOString().split("T")[0]}.pdf`;
+      doc.save(fileName);
+  
+      console.log("PDF generated successfully with template dimensions:", layout.templateWidth, "x", layout.templateHeight);
     } catch (error) {
-      console.error("Error downloading bill as PDF:", error)
-      alert("Error generating PDF. Please try again.")
+      console.error("PDF generation error:", error);
+      alert("Failed to generate PDF. Please try again.");
     }
-  }
-
-  // IMPROVED BULK PDF GENERATOR with perfect alignment
+  };
+  
+  // EXACT MATCH BULK PDF GENERATOR
   const downloadBulkBillsDataAsPDF = async (bills: BillResponseType[]) => {
     try {
-      // Use the first bill to determine layout (all bills will use same template)
-      const firstBillLayout = generateUnifiedLayoutData(bills[0], selectedTemplate, previewFromAddress)
-
-      const doc = new jsPDF({
-        orientation: firstBillLayout.templateWidthPt > firstBillLayout.templateHeightPt ? "landscape" : "portrait",
-        unit: "pt",
-        format: [firstBillLayout.templateWidthPt, firstBillLayout.templateHeightPt],
-      })
-
-      doc.setProperties({
-        title: `Bulk Shipping Labels`,
-        subject: `Bulk Shipping Labels for ${bills.length} orders`,
-        author: firstBillLayout.fromAddress.name,
-        creator: "Print Management System",
-      })
-
-      // Generate each bill as a separate page with EXACT same layout as print preview
-      for (let index = 0; index < bills.length; index++) {
-        const bill = bills[index]
-
-        if (index > 0) {
-          doc.addPage()
-        }
-
-        // Generate EXACT same layout data as print preview for this bill
-        const layout = generateUnifiedLayoutData(bill, selectedTemplate, previewFromAddress)
-
-        // Use EXACT positioning as print layout
-        let yPos = layout.marginPt + layout.topPaddingAdjustment
-
-        // Ship Via header
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(layout.baseFontSize)
-        doc.text(`Ship Via: ${layout.formattedOrder.shipVia}`, layout.marginPt, yPos)
-        yPos += layout.baseFontSize * 1.5
-
-        // Order ID (centered)
-        const orderText = `${layout.fromAddress.name} Order ID: ${bill.bill_details.bill_no}`
-        const textWidth = doc.getTextWidth(orderText)
-        doc.text(orderText, (layout.templateWidthPt - textWidth) / 2, yPos)
-        yPos += layout.baseFontSize * 1.8
-
-        // Generate and add barcode EXACTLY as in print
-        try {
-          const barcodeDataUrl = await generateBarcodeImage(bill.bill_details.bill_no.toString(), layout)
-          if (barcodeDataUrl) {
-            const barcodeWidthPt = layout.barcodeWidth * 80 * 0.75
-            const barcodeHeightPt = layout.barcodeHeight * 0.75
-            doc.addImage(
-              barcodeDataUrl,
-              "PNG",
-              (layout.templateWidthPt - barcodeWidthPt) / 2,
-              yPos,
-              barcodeWidthPt,
-              barcodeHeightPt,
-            )
-            yPos += barcodeHeightPt + 12
-          } else {
-            // Fallback to text
-            doc.setFont("helvetica", "normal")
-            doc.setFontSize(layout.smallFontSize)
-            const barcodeText = `[BARCODE: ${bill.bill_details.bill_no}]`
-            const textWidth = doc.getTextWidth(barcodeText)
-            doc.text(barcodeText, (layout.templateWidthPt - textWidth) / 2, yPos + 15)
-            yPos += 35
-          }
-        } catch (error) {
-          console.warn("Barcode generation failed, using text fallback:", error)
-          doc.setFont("helvetica", "normal")
-          doc.setFontSize(layout.smallFontSize)
-          const barcodeText = `[BARCODE: ${bill.bill_details.bill_no}]`
-          const textWidth = doc.getTextWidth(barcodeText)
-          doc.text(barcodeText, (layout.templateWidthPt - textWidth) / 2, yPos + 15)
-          yPos += 35
-        }
-
-        // TO Address box with proper height
-        doc.setLineWidth(layout.borderWidthPt)
-        doc.rect(layout.marginPt, yPos, layout.templateWidthPt - 2 * layout.marginPt, layout.toAddressBoxHeight)
-
-        let addressYPos = yPos + layout.paddingPt + 8
-        doc.setFont("helvetica", "bold")
-        doc.setFontSize(layout.baseFontSize)
-        doc.text(`TO ${layout.formattedOrder.toAddress.name}`, layout.marginPt + layout.paddingPt, addressYPos)
-
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(layout.baseFontSize)
-        addressYPos += layout.baseFontSize * layout.lineHeight
-
-        const fullStreet =
-          (bill.customer_details.flat_no ? bill.customer_details.flat_no + ", " : "") + bill.customer_details.street
-        doc.text(fullStreet, layout.marginPt + layout.paddingPt, addressYPos)
-        addressYPos += layout.baseFontSize * layout.lineHeight
-        doc.text(layout.formattedOrder.toAddress.city, layout.marginPt + layout.paddingPt, addressYPos)
-        addressYPos += layout.baseFontSize * layout.lineHeight
-        doc.text(
-          `${layout.formattedOrder.toAddress.state} ${layout.formattedOrder.toAddress.zipCode}`,
-          layout.marginPt + layout.paddingPt,
-          addressYPos,
-        )
-        addressYPos += layout.baseFontSize * layout.lineHeight
-        doc.text(layout.formattedOrder.toAddress.phone, layout.marginPt + layout.paddingPt, addressYPos)
-
-        yPos += layout.toAddressBoxHeight + layout.sectionSpacing
-
-        // From and Order details with proper spacing
-        const colWidth = (layout.templateWidthPt - 3 * layout.marginPt - layout.sectionSpacing) / 2
-
-        // From address box
-        doc.setLineWidth(layout.borderWidthPt)
-        doc.rect(layout.marginPt, yPos, colWidth, layout.detailBoxHeight)
-        let fromYPos = yPos + layout.paddingPt + 8
-        doc.setFont("helvetica", "bold")
-        doc.setFontSize(layout.baseFontSize)
-        doc.text("From:", layout.marginPt + layout.paddingPt, fromYPos)
-
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(layout.smallFontSize)
-        fromYPos += layout.baseFontSize * layout.lineHeight
-        doc.text(layout.fromAddress.name, layout.marginPt + layout.paddingPt, fromYPos)
-        fromYPos += layout.smallFontSize * layout.lineHeight
-        doc.text(layout.fromAddress.street, layout.marginPt + layout.paddingPt, fromYPos)
-        fromYPos += layout.smallFontSize * layout.lineHeight
-        doc.text(layout.fromAddress.city, layout.marginPt + layout.paddingPt, fromYPos)
-        fromYPos += layout.smallFontSize * layout.lineHeight
-        doc.text(
-          `${layout.fromAddress.state}-${layout.fromAddress.zipCode}`,
-          layout.marginPt + layout.paddingPt,
-          fromYPos,
-        )
-        fromYPos += layout.smallFontSize * layout.lineHeight
-        doc.text(`Mobile: ${layout.fromAddress.phone}`, layout.marginPt + layout.paddingPt, fromYPos)
-
-        // Order details box
-        const rightColX = layout.marginPt + colWidth + layout.sectionSpacing
-        doc.setLineWidth(layout.borderWidthPt)
-        doc.rect(rightColX, yPos, colWidth, layout.detailBoxHeight)
-        let orderYPos = yPos + layout.paddingPt + 8
-        doc.setFont("helvetica", "bold")
-        doc.setFontSize(layout.baseFontSize)
-        doc.text("Prepaid Order:", rightColX + layout.paddingPt, orderYPos)
-
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(layout.smallFontSize)
-        orderYPos += layout.baseFontSize * layout.lineHeight
-        doc.text(`Date: ${layout.formattedOrder.orderDate}`, rightColX + layout.paddingPt, orderYPos)
-        orderYPos += layout.smallFontSize * layout.lineHeight
-        doc.text(`Weight: ${bill.shipping_details?.weight || ""}`, rightColX + layout.paddingPt, orderYPos)
-        orderYPos += layout.smallFontSize * layout.lineHeight
-        doc.text(`No. of Items: ${layout.formattedOrder.totalItems}`, rightColX + layout.paddingPt, orderYPos)
-        orderYPos += layout.smallFontSize * layout.lineHeight
-        doc.text("Source: Instagram", rightColX + layout.paddingPt, orderYPos)
-        orderYPos += layout.smallFontSize * layout.lineHeight
-        doc.text("Packed By: ", rightColX + layout.paddingPt, orderYPos)
-        yPos += layout.detailBoxHeight + layout.sectionSpacing + 2 // Extra spacing before product section
-       
-
-        // Products section with proper spacing
-        const remainingHeight = layout.templateWidthPt - yPos - layout.marginPt
-        doc.setLineWidth(layout.borderWidthPt)
-        doc.rect(layout.marginPt, yPos, layout.templateWidthPt - 2 * layout.marginPt, remainingHeight)
-
-        let productYPos = yPos + layout.paddingPt + 8
-        doc.setFont("helvetica", "bold")
-        doc.setFontSize(layout.baseFontSize)
-        doc.text("Products:", layout.marginPt + layout.paddingPt, productYPos)
-
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(layout.smallFontSize)
-        productYPos += layout.baseFontSize * layout.lineHeight
-
-        const maxWidth = layout.templateWidthPt - 2 * layout.marginPt - 2 * layout.paddingPt
-        const lines = doc.splitTextToSize(layout.productText, maxWidth)
-
-        lines.forEach((line: string) => {
-          if (productYPos < layout.templateHeightPt - layout.marginPt - layout.paddingPt) {
-            doc.text(line, layout.marginPt + layout.paddingPt, productYPos)
-            productYPos += layout.smallFontSize * layout.lineHeight
-          }
-        })
+      // Ensure there's at least one bill to generate the PDF
+      if (bills.length === 0) {
+        console.error("No bills available for bulk PDF generation");
+        return;
       }
+  
+      // Use the first bill's layout for the template
+      const layout = generateUnifiedLayoutData(bills[0], selectedTemplate, previewFromAddress);
+  
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: [layout.templateWidthPt, layout.templateHeightPt],
+      });
+  
+      // Loop through each bill and generate a page for it
+      for (let index = 0; index < bills.length; index++) {
+        const bill = bills[index];
+        const layout = generateUnifiedLayoutData(bill, selectedTemplate, previewFromAddress);
+        
+        let yPos = layout.marginPt;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(layout.baseFontSize);
+  
+        // Header
+        doc.text(`Ship Via: ${layout.formattedOrder.shipVia}`, layout.marginPt, yPos);
+        yPos += 14;
+  
+        // Order ID (centered)
+        const title = `${layout.fromAddress.name} Order ID: ${layout.formattedOrder.id}`;
+        const titleWidth = doc.getTextWidth(title);
+        doc.text(title, (layout.templateWidthPt - titleWidth) / 2, yPos);
+        yPos += 12;
+  
+        // Barcode
+        const barcodeDataUrl = await generateBarcodeImage(layout.formattedOrder.id, layout);
+        if (barcodeDataUrl) {
+          const barcodeWidth = layout.barcodeWidth * 60; // Match the canvas width from generateBarcodeImage
+          const barcodeHeight = layout.barcodeHeight;
+          doc.addImage(
+            barcodeDataUrl, 
+            "PNG", 
+            (layout.templateWidthPt - barcodeWidth) / 2, 
+            yPos, 
+            barcodeWidth, 
+            barcodeHeight
+          );
+          yPos += barcodeHeight + 8;
+        } else {
+          yPos += layout.barcodeHeight + 8;
+        }
+  
+        // TO Address Box - Reduced height to minimize blank space
+        const reducedToAddressBoxHeight = layout.toAddressBoxHeight - 12; // Reduce by 12pt for tighter fit
+        doc.setLineWidth(layout.borderWidthPt);
+        doc.rect(layout.marginPt, yPos, layout.templateWidthPt - 2 * layout.marginPt, reducedToAddressBoxHeight);
+        
+        let addrY = yPos + 10; // Reduced from 12 to 10 for tighter top spacing
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(layout.titleFontSize);
+        doc.text(`TO ${layout.formattedOrder.toAddress.name}`, layout.marginPt + layout.paddingPt, addrY);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(layout.baseFontSize);
+        addrY += 10; // Reduced from 12 to 10
 
-      // Save the PDF
-      doc.save(
-        `bulk_shipping_labels_${selectedTemplate?.name || "default"}_${new Date().toISOString().split("T")[0]}.pdf`,
-      )
-
-      console.log(
-        `Bulk shipping labels (${bills.length} labels) downloaded as PDF with EXACT print preview match using ${selectedTemplate?.name || "default"} template`,
-      )
+        // Logic to split long street address
+        const addressMaxWidth = layout.templateWidthPt - (2 * layout.marginPt) - (2 * layout.paddingPt);
+        const streetLines = doc.splitTextToSize(layout.formattedOrder.toAddress.street, addressMaxWidth);
+        streetLines.forEach((line: string) => {
+            doc.text(line, layout.marginPt + layout.paddingPt, addrY);
+            addrY += 9; // Use existing reduced line height
+        });
+        
+        doc.text(layout.formattedOrder.toAddress.city, layout.marginPt + layout.paddingPt, addrY);
+        addrY += 9; // Reduced from 10 to 9
+        doc.text(`${layout.formattedOrder.toAddress.state} - ${layout.formattedOrder.toAddress.zipCode}`, layout.marginPt + layout.paddingPt, addrY);
+        addrY += 9; // Reduced from 10 to 9
+        doc.text(`Phone: ${layout.formattedOrder.toAddress.phone}`, layout.marginPt + layout.paddingPt, addrY);
+        
+        yPos += reducedToAddressBoxHeight + layout.sectionSpacing;
+  
+        // FROM + ORDER Details (Side-by-side boxes) - Use layout-calculated height
+        const boxWidth = (layout.templateWidthPt - 3 * layout.marginPt) / 2;
+  
+        // FROM Box
+        doc.rect(layout.marginPt, yPos, boxWidth, layout.detailBoxHeight);
+        let fy = yPos + 12;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(layout.titleFontSize);
+        doc.text("From:", layout.marginPt + layout.paddingPt, fy);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(layout.smallFontSize);
+        fy += 12;
+        doc.text(layout.fromAddress.name, layout.marginPt + layout.paddingPt, fy);
+        fy += 10;
+        doc.text(layout.fromAddress.street, layout.marginPt + layout.paddingPt, fy);
+        fy += 10;
+        doc.text(layout.fromAddress.city, layout.marginPt + layout.paddingPt, fy);
+        fy += 10;
+        doc.text(`${layout.fromAddress.state}-${layout.fromAddress.zipCode}`, layout.marginPt + layout.paddingPt, fy);
+        fy += 10;
+        doc.text(`Mobile: ${layout.fromAddress.phone}`, layout.marginPt + layout.paddingPt, fy);
+  
+        // ORDER Box
+        const rx = layout.marginPt + boxWidth + layout.marginPt;
+        doc.rect(rx, yPos, boxWidth, layout.detailBoxHeight);
+        let ry = yPos + 12;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(layout.titleFontSize);
+        doc.text("Prepaid Order:", rx + layout.paddingPt, ry);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(layout.smallFontSize);
+        ry += 12;
+        doc.text(`Date: ${layout.formattedOrder.orderDate}`, rx + layout.paddingPt, ry);
+        ry += 10;
+        doc.text(`Weight: ${layout.formattedOrder.weight || "0.5 kg"}`, rx + layout.paddingPt, ry);
+        ry += 10;
+        doc.text(`No. of Items: ${layout.formattedOrder.totalItems}`, rx + layout.paddingPt, ry);
+        ry += 10;
+        doc.text("Source: Instagram", rx + layout.paddingPt, ry);
+        ry += 10;
+        doc.text("Packed By: Team", rx + layout.paddingPt, ry);
+  
+        yPos += layout.detailBoxHeight + layout.sectionSpacing + 6; // Added 6pt extra space for better separation
+  
+        // Products Box - Adjusted to account for the space changes above
+        const remainingHeight = layout.templateHeightPt - yPos - layout.marginPt + 6; // Compensate for the space we added
+        doc.rect(layout.marginPt, yPos, layout.templateWidthPt - 2 * layout.marginPt, remainingHeight);
+        
+        let py = yPos + 12;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(layout.titleFontSize);
+        doc.text("Products:", layout.marginPt + layout.paddingPt, py);
+        
+        py += 12;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(layout.smallFontSize);
+  
+        // Split and add products text
+        const maxWidth = layout.templateWidthPt - 2 * layout.marginPt - 2 * layout.paddingPt;
+        const productLines = doc.splitTextToSize(layout.productText, maxWidth);
+        
+        productLines.forEach((line: string) => {
+          if (py < layout.templateHeightPt - layout.marginPt - 5) {
+            doc.text(line, layout.marginPt + layout.paddingPt, py);
+            py += 10;
+          }
+        });
+  
+        // Add new page if not the last bill
+        if (index < bills.length - 1) {
+          doc.addPage();
+        }
+      }
+  
+      // Save with template-specific filename
+      const fileName = `bulk_bills_${layout.templateWidth}x${layout.templateHeight}_${selectedTemplate?.name || "default"}_${new Date().toISOString().split("T")[0]}.pdf`;
+      doc.save(fileName);
+  
+      console.log("Bulk PDF generated successfully with template dimensions:", layout.templateWidth, "x", layout.templateHeight);
     } catch (error) {
-      console.error("Error downloading bulk shipping labels as PDF:", error)
-      alert("Error generating bulk PDF. Please try again.")
+      console.error("Error downloading bulk shipping labels as PDF:", error);
+      alert("Error generating bulk PDF. Please try again.");
     }
-  }
+  };
 
   const handlePrintBill = async (billId: string) => {
     if (!billId) {
-      alert("Please enter a bill ID")
+      alert('Please enter a bill ID');
+      return;
+    }
+    if (!selectedTemplate) {
+      alert("Please select a template before printing")
       return
     }
-
     try {
-      setIsLoading(true)
-
+      setIsLoading(true);
+  
       const response = await publicApi.get(`/api/printingroute/print-bill/${billId}`, {
         headers: {
-          "tenent-id": tenentId || "",
-        },
-      })
-
+          'tenent-id': tenentId || ''
+        }
+      });
+  
       if (!response.data) {
-        throw new Error("No data returned from server")
+        throw new Error('No data returned from server');
       }
-
-      const responseOrder: BillResponseType = response.data
-
-      // Format order data
+  
+      const responseOrder: BillResponseType = response.data;
+      
+      // Format order data - Fix the missing properties issue by adding all required fields
       const formattedOrder: OrderType = {
         id: responseOrder.bill_id,
         name: responseOrder.customer_details.name,
@@ -1286,425 +1233,806 @@ const PrintManagement = ({ orderData }: PrintManagementProps) => {
           city: responseOrder.customer_details.district,
           state: responseOrder.customer_details.state,
           zipCode: responseOrder.customer_details.pincode,
-          phone: responseOrder.customer_details.phone,
+          phone: responseOrder.customer_details.phone
         },
-        isPrepaid: true,
+        isPrepaid: true, // Default to true
         orderDate: `${responseOrder.bill_details.date}, ${responseOrder.bill_details.time}`,
-        shipVia: responseOrder.shipping_details?.method_name || "Standard Shipping",
-        products: responseOrder.product_details.map((product) => ({
+        shipVia: responseOrder.shipping_details?.method_name || 'Standard Shipping',
+        products: responseOrder.product_details.map(product => ({
           name: product.productName,
-          quantity: product.quantity,
+          quantity: product.quantity
         })),
         totalItems: responseOrder.product_details.reduce((total, product) => total + product.quantity, 0),
-        packedBy: "Team",
-        weight: responseOrder.shipping_details?.weight || "0.5 kg",
-      }
-
-      setCurrentOrder(formattedOrder)
-
+        packedBy: 'Team',
+        weight: responseOrder.shipping_details?.weight || '0.5 kg'
+      };
+  
+      setCurrentOrder(formattedOrder);
+      
       // Add to print history
-      const updatedHistory = [billId, ...printHistory.filter((id) => id !== billId)].slice(0, 10)
-      setPrintHistory(updatedHistory)
-      localStorage.setItem("printHistory", JSON.stringify(updatedHistory))
-
-      // Generate UNIFIED layout data for EXACT consistency
-      const layout = generateUnifiedLayoutData(responseOrder, selectedTemplate, previewFromAddress)
-
-      // Generate print content using UNIFIED system
-      const printContent = generatePrintContent(layout)
-      const printWindow = window.open("", "_blank")
-
+      const updatedHistory = [billId, ...printHistory.filter(id => id !== billId)].slice(0, 10);
+      setPrintHistory(updatedHistory);
+      localStorage.setItem('printHistory', JSON.stringify(updatedHistory));
+      
+      // Calculate dimensions in inches (96 DPI standard)
+      const templateWidth = (selectedTemplate?.width || 384) / 96;
+      const templateHeight = (selectedTemplate?.height || 384) / 96;
+      
+      // Determine font sizes based on template dimensions
+      const getFontSizes = (template: TemplateType | null) => {
+        // Small template (2x4)
+        if (template?.id === '2x4' || (template?.width && template.width <= 192)) {
+          return {
+            baseFontSize: 5, // Further reduced
+            titleFontSize: 6, // Further reduced
+            smallFontSize: 4, // Further reduced
+            letterSpacing: '-0.4px', // Increased letter spacing reduction
+            lineHeight: 0.8, // Further reduced
+            padding: '1px', // Reduced padding
+            borderWidth: '0.5px'
+          };
+        }
+        // Medium template (4x4)
+        else if (template?.id === '4x4' || (template?.width && template.width <= 384)) {
+          return {
+            baseFontSize: 11,
+            titleFontSize: 12,
+            smallFontSize: 10,
+            letterSpacing: 'normal',
+            lineHeight: 1.2,
+            padding: '4px',
+            borderWidth: '1px'
+          };
+        }
+        // Larger templates
+        else {
+          return {
+            baseFontSize: 14,
+            titleFontSize: 16, 
+            smallFontSize: 12,
+            letterSpacing: 'normal',
+            lineHeight: 1.3,
+            padding: '6px',
+            borderWidth: '1px'
+          };
+        }
+      };
+      
+      // Adjust barcode size based on template
+      const barcodeWidth = selectedTemplate?.id === '2x4' ? 0.8 : 1.2;
+      const barcodeHeight = selectedTemplate?.id === '2x4' ? 25 : 40;
+      
+      // Get font sizes based on selected template
+      const fontSizes = getFontSizes(selectedTemplate);
+      
+      // Format product list with adaptive font sizes
+      const formatProductsList = (products: Array<{ productName?: string; name?: string; quantity: number }>): string => {
+        if (!products || products.length === 0) {
+          return "No products";
+        }
+        
+        // Calculate how many products we have to display
+        const totalProducts = products.length;
+        
+        // Dynamically reduce font size for longer product lists
+        let fontSize = fontSizes.smallFontSize;
+        let lineHeight = fontSizes.lineHeight;
+        
+        if (totalProducts > 6) {
+          fontSize = Math.max(fontSize - 1, 3); // Reduce font size but not below 3px
+          lineHeight = Math.max(lineHeight - 0.1, 0.7); // Reduce line height proportionally
+        }
+        
+        if (totalProducts > 10) {
+          fontSize = Math.max(fontSize - 1, 2); // Further reduce for very long lists
+          lineHeight = Math.max(lineHeight - 0.1, 0.6);
+        }
+        
+        // For small templates (2x4), always use compact format
+        if (selectedTemplate?.id === '2x4') {
+          return products.map(product => {
+            const productName = product.productName || product.name;
+            // Truncate product names for small templates
+            const truncatedName = productName && productName.length > 10 
+              ? productName.substring(0, 9) + '…' 
+              : productName;
+            return `${truncatedName} × ${product.quantity}`;
+          }).join(', ');
+        }
+        
+        // For larger templates, format as a vertical list with optimized spacing
+        return products.map(product => {
+          const productName = product.productName || product.name;
+          return `${productName} × ${product.quantity}`;
+        }).join(', ');
+      };
+      
+      // Instead of navigating to print step, directly print
+      const printWindow = window.open('', '_blank');
       if (!printWindow) {
-        alert("Unable to open print window. Please disable your pop-up blocker and try again.")
-        return
+        alert('Unable to open print window. Please disable your pop-up blocker and try again.');
+        return;
       }
-
-      printWindow.document.open()
-      printWindow.document.write(printContent)
-      printWindow.document.close()
-
-      // Auto-download bill data as PDF after successful print setup
+    
+      printWindow.document.open();
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Print Label - ${billId}</title>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+            <style>
+              @media print {
+                @page {
+                  size: ${templateWidth}in ${templateHeight}in;
+                  margin: 0;
+                }
+                body {
+                  margin: 0;
+                  padding: 0;
+                  width: ${selectedTemplate?.width || 384}px !important;
+                  height: ${selectedTemplate?.height || 384}px !important;
+                  max-height: ${selectedTemplate?.height || 384}px !important;
+                  overflow: hidden;
+                }
+                .container {
+                  width: 100% !important;
+                  height: 100% !important;
+                  page-break-after: avoid;
+                  overflow: hidden !important;
+                  box-sizing: border-box;
+                  padding: ${fontSizes.padding} !important;
+                  padding-top: 8px !important; 
+                  padding-left: 12px !important;
+                  padding-right: 12px !important;
+                  padding-bottom: 8px !important;
+                  border: 0 !important;
+                }
+              }
+              
+              html, body {
+                margin: 0;
+                padding: 0;
+                font-family: Arial, sans-serif;
+                font-size: ${fontSizes.baseFontSize}px;
+                line-height: ${fontSizes.lineHeight};
+                font-weight: 500;
+                letter-spacing: ${fontSizes.letterSpacing};
+              }
+              
+              .container {
+                width: ${selectedTemplate?.width || 384}px;
+                height: ${selectedTemplate?.height || 384}px;
+                margin: 0 auto;
+                padding: ${fontSizes.padding};
+                padding-top: 8px;
+                padding-left: 12px;
+                padding-right: 12px;
+                padding-bottom: 8px;
+                box-sizing: border-box;
+                position: relative;
+                border: 0;
+                overflow: hidden;
+              }
+              
+              .header {
+                font-size: ${fontSizes.titleFontSize}px;
+                font-weight: bold;
+                margin-top: 5px;
+                margin-bottom: 1px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+              
+              .order-id {
+                font-size: ${fontSizes.titleFontSize}px;
+                font-weight: bold;
+                margin-bottom: 2px;
+                text-align: center;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+              
+              .barcode-wrapper {
+                text-align: center;
+                margin: 4px auto;
+                height: ${barcodeHeight}px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                width: 90%;
+              }
+              
+              .barcode-img {
+                max-height: 100%;
+                max-width: 100%;
+              }
+              
+              .address-box {
+                border: ${fontSizes.borderWidth} solid #000;
+                padding: ${fontSizes.padding};
+                margin-bottom: 2px;
+                min-height: 80px;
+                overflow: hidden;
+              }
+              
+              .to-name {
+                font-weight: bold;
+                font-size: ${fontSizes.titleFontSize}px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+              
+              .address-line {
+                white-space: normal;
+                word-wrap: break-word;
+                line-height: ${fontSizes.lineHeight};
+                font-size: ${fontSizes.baseFontSize}px;
+                overflow: hidden;
+              }
+              
+              .details-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 2px;
+                margin-bottom: 2px;
+              }
+              
+              .detail-box {
+                border: ${fontSizes.borderWidth} solid #000;
+                padding: ${fontSizes.padding};
+                min-height: 65px;
+                overflow: hidden;
+              }
+              
+              .detail-title {
+                font-weight: bold;
+                font-size: ${fontSizes.titleFontSize}px;
+              }
+              
+              .product-section {
+                border: ${fontSizes.borderWidth} solid #000;
+                padding: ${fontSizes.padding};
+                margin-top: 2px;
+                min-height: 50px;
+                overflow: hidden;
+              }
+  
+              .product-title {
+                font-weight: bold;
+                font-size: ${fontSizes.titleFontSize}px;
+                margin-bottom: 1px;
+              }
+  
+              .product-list {
+                white-space: normal;
+                word-wrap: break-word;
+                line-height: ${formattedOrder.products.length > 6 ? Math.max(fontSizes.lineHeight - 0.2, 0.7) : fontSizes.lineHeight};
+                font-size: ${formattedOrder.products.length > 6 ? Math.max(fontSizes.smallFontSize - 1, 3) : fontSizes.smallFontSize}px;
+                overflow: hidden;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                Ship Via: ${formattedOrder.shipVia}
+              </div>
+              
+              <div class="order-id">
+                ${previewFromAddress.name} Order ID: ${formattedOrder.id}
+              </div>
+              
+              <div class="barcode-wrapper">
+                <svg id="barcode-${formattedOrder.id}" class="barcode-img"></svg>
+              </div>
+              
+              <div class="address-box">
+                <div class="to-name">TO ${formattedOrder.toAddress.name}</div>
+                <div class="address-line">${formattedOrder.toAddress.street}</div>
+                <div class="address-line">${formattedOrder.toAddress.city}</div>
+                <div class="address-line">${formattedOrder.toAddress.state} ${formattedOrder.toAddress.zipCode}</div>
+                <div class="address-line">${formattedOrder.toAddress.phone}</div>
+              </div>
+              
+              <div class="details-grid">
+                <div class="detail-box">
+                  <div class="detail-title">From:</div>
+                  <div class="address-line">${previewFromAddress.name}</div>
+                  <div class="address-line">${previewFromAddress.street}</div>
+                  <div class="address-line">${previewFromAddress.city}</div>
+                  <div class="address-line">${previewFromAddress.state}-${previewFromAddress.zipCode}</div>
+                  <div class="address-line">Mobile: ${previewFromAddress.phone}</div>
+                </div>
+                
+                <div class="detail-box">
+                  <div class="detail-title">
+                    Prepaid Order:
+                  </div>
+                  <div class="address-line">Date: ${formattedOrder.orderDate}</div>
+                  <div class="address-line">Weight: </div>
+                  <div class="address-line">No. of Items: ${formattedOrder.totalItems}</div>
+                  <div class="address-line">Source: Instagram</div>
+                  <div class="address-line">Packed By: </div>
+                </div>
+              </div>
+              
+              <div class="product-section">
+                <div class="product-title">Products:</div>
+                <div class="product-list">
+                  ${formatProductsList(formattedOrder.products)}
+                </div>
+              </div>
+            </div>
+            <script>
+              window.onload = function() {
+                JsBarcode("#barcode-${formattedOrder.id}", "${formattedOrder.id}", { 
+                  format: "CODE128", 
+                  width: ${barcodeWidth},
+                  height: ${barcodeHeight},
+                  displayValue: false,
+                  margin: 0
+                });
+                
+                setTimeout(() => {
+                  window.print();
+                  setTimeout(() => window.close(), 500);
+                }, 500);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
       setTimeout(() => {
-        downloadBillDataAsPDF(billId, responseOrder)
+        downloadBillDataAsPDF(billId, responseOrder, selectedTemplate)
       }, 1000)
     } catch (error: any) {
-      alert(`Error: ${error.message || "Failed to print bill. Please try again."}`)
-      console.error("Print error:", error)
+      alert(`Error: ${error.message || 'Failed to print bill. Please try again.'}`);
+      console.error('Print error:', error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleBulkPrint = async () => {
     if (!isAddressSaved) {
-      alert("Please enter your shipping from address before printing in bulk")
-      return
+      alert('Please enter your shipping from address before printing in bulk');
+      return;
     }
 
     try {
-      setIsLoading(true)
-      const response = await publicApi.get("/api/printingroute/bulkPrinting", {
+      setIsLoading(true);
+      const response = await publicApi.get('/api/printingroute/bulkPrinting', {
         headers: {
-          "tenent-id": tenentId || "",
-        },
-      })
+          'tenent-id': tenentId || ''
+        }
+      });
 
       if (!response.data.bills || response.data.bills.length === 0) {
-        alert("No bills available for printing")
-        return
+        alert('No bills available for printing');
+        return;
       }
 
-      const printContent = generateBulkPrintContent(response.data.bills)
-      const printWindow = window.open("", "_blank")
+      const printContent = generateBulkPrintContent(response.data.bills);
+      const printWindow = window.open('', '_blank');
 
       if (!printWindow) {
-        alert("Unable to open print window. Please disable your pop-up blocker and try again.")
-        return
+        alert('Unable to open print window. Please disable your pop-up blocker and try again.');
+        return;
       }
 
-      printWindow.document.open()
-      printWindow.document.write(printContent)
-      printWindow.document.close()
+      printWindow.document.open();
+      printWindow.document.write(printContent);
+      printWindow.document.close();
 
-      printWindow.onload = () => {
+      printWindow.onload = function () {
         setTimeout(() => {
           try {
-            printWindow.focus()
-            printWindow.print()
-            setBills(0)
+            printWindow.focus();
+            printWindow.print();
+            setBills(0);
           } catch (error) {
-            console.error("Print error:", error)
-            alert("There was an error while trying to print. Please try again.")
+            console.error("Print error:", error);
+            alert("There was an error while trying to print. Please try again.");
           } finally {
-            printWindow.close()
-
-            // Auto-download all bills data as PDF after bulk print
+            printWindow.close();
             setTimeout(() => {
               downloadBulkBillsDataAsPDF(response.data.bills)
             }, 1000)
           }
-        }, 500)
-      }
+        }, 500);
+      };
+
+
     } catch (error: any) {
-      alert(`Error: ${error.message || "Error during printing. Please try again."}`)
-      console.error("Bulk print error:", error)
+      alert(`Error: ${error.message || 'Error during printing. Please try again.'}`);
+      console.error('Bulk print error:', error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
-
-  // IMPROVED BULK PRINT CONTENT GENERATOR with perfect box alignment
+  };
+  // UNIFIED BULK PRINT CONTENT GENERATOR
   const generateBulkPrintContent = (bills: BillResponseType[]) => {
-    // Use first bill to determine template settings (all bills use same template)
-    const firstLayout = generateUnifiedLayoutData(bills[0], selectedTemplate, previewFromAddress)
-
+    // Get the dimensions from the selected template
+    const templateWidth = (selectedTemplate?.width || 384) / 96;
+    const templateHeight = (selectedTemplate?.height || 384) / 96;
+    
+    // Determine font sizes based on template dimensions - using the same logic as handlePrintBill
+    const getFontSizes = (template: TemplateType | null) => {
+      // Small template (2x4)
+      if (template?.id === '2x4' || (template?.width && template.width <= 192)) {
+        return {
+          baseFontSize: 5,
+          titleFontSize: 6,
+          smallFontSize: 4,
+          letterSpacing: '-0.4px',
+          lineHeight: 0.8,
+          padding: '1px',
+          borderWidth: '0.5px'
+        };
+      }
+      // Medium template (4x4)
+      else if (template?.id === '4x4' || (template?.width && template.width <= 384)) {
+        return {
+          baseFontSize: 11,
+          titleFontSize: 12,
+          smallFontSize: 10,
+          letterSpacing: 'normal',
+          lineHeight: 1.2,
+          padding: '4px',
+          borderWidth: '1px'
+        };
+      }
+      // Larger templates
+      else {
+        return {
+          baseFontSize: 14,
+          titleFontSize: 16, 
+          smallFontSize: 12,
+          letterSpacing: 'normal',
+          lineHeight: 1.3,
+          padding: '6px',
+          borderWidth: '1px'
+        };
+      }
+    };
+  
+    // Get font sizes based on selected template
+    const fontSizes = getFontSizes(selectedTemplate);
+    
+    // Adjust barcode size based on template
+    const barcodeWidth = selectedTemplate?.id === '2x4' ? 0.8 : 1.2;
+    const barcodeHeight = selectedTemplate?.id === '2x4' ? 25 : 40;
+    
     const styles = `
-     <style>
-       @media print {
-         @page {
-           size: ${firstLayout.templateWidthPt / 72}in ${firstLayout.templateHeightPt / 72}in;
-           margin: 0;
-         }
-         body {
-           margin: 0 !important;
-           padding: 0 !important;
-           width: ${firstLayout.templateWidth}px !important;
-           height: ${firstLayout.templateHeight}px !important;
-           max-height: ${firstLayout.templateHeight}px !important;
-           overflow: hidden !important;
-         }
-         .page-container {
-           width: 100% !important;
-           height: 100% !important;
-           page-break-after: always;
-           overflow: hidden !important;
-           box-sizing: border-box;
-         }
-         .container {
-           width: 100% !important;
-           height: 100% !important;
-           page-break-after: always;
-           overflow: hidden !important;
-           box-sizing: border-box;
-           padding: ${firstLayout.paddingPx}px !important;
-           border: 0 !important;
-           display: flex !important;
-           flex-direction: column !important;
-         }
-       }
-       
-       * {
-         box-sizing: border-box;
-       }
-       
-       html, body {
-         margin: 0;
-         padding: 0;
-         font-family: Arial, sans-serif;
-         font-size: ${firstLayout.baseFontSize}px;
-         line-height: ${firstLayout.lineHeight};
-         font-weight: normal;
-         letter-spacing: ${firstLayout.letterSpacing};
-       }
-       
-       .page-container {
-         width: ${firstLayout.templateWidth}px;
-         height: ${firstLayout.templateHeight}px;
-         page-break-after: always;
-         margin: 0 auto;
-         box-sizing: border-box;
-         position: relative;
-       }
-       
-       .container {
-         width: ${firstLayout.templateWidth}px;
-         height: ${firstLayout.templateHeight}px;
-         margin: 0 auto;
-         padding: ${firstLayout.paddingPx}px;
-         box-sizing: border-box;
-         position: relative;
-         border: 0;
-         display: flex;
-         flex-direction: column;
-       }
-       
-       .header {
-         font-size: ${firstLayout.baseFontSize}px;
-         font-weight: normal;
-         margin-bottom: 4px;
-         text-align: left;
-         flex-shrink: 0;
-       }
-       
-       .order-id {
-         font-size: ${firstLayout.baseFontSize}px;
-         font-weight: normal;
-         margin-bottom: 6px;
-         text-align: center;
-         flex-shrink: 0;
-       }
-       
-       .barcode-wrapper {
-         text-align: center;
-         margin: 6px auto 8px auto;
-         height: ${firstLayout.barcodeHeight}px;
-         display: flex;
-         justify-content: center;
-         align-items: center;
-         width: 100%;
-         flex-shrink: 0;
-       }
-       
-       .barcode-img {
-         max-height: 100%;
-         max-width: 90%;
-       }
-       
-       .address-box {
-         border: ${firstLayout.borderWidthPx}px solid #000;
-         padding: ${firstLayout.paddingPx}px;
-         margin-bottom: ${firstLayout.sectionSpacing}px;
-         height: ${firstLayout.toAddressBoxHeight}px;
-         overflow: hidden;
-         flex-shrink: 0;
-         display: flex;
-         flex-direction: column;
-         justify-content: flex-start;
-       }
-       
-       .to-name {
-         font-weight: bold;
-         font-size: ${firstLayout.baseFontSize}px;
-         margin-bottom: 2px;
-         line-height: ${firstLayout.lineHeight};
-         white-space: nowrap;
-         overflow: hidden;
-         text-overflow: ellipsis;
-       }
-       
+      <style>
+        @media print {
+          @page {
+            size: ${templateWidth}in ${templateHeight}in;
+            margin: 0;
+          }
+          body {
+            margin: 0;
+            padding: 0;
+            width: ${selectedTemplate?.width || 384}px !important;
+            height: ${selectedTemplate?.height || 384}px !important;
+            max-height: ${selectedTemplate?.height || 384}px !important;
+            overflow: hidden;
+          }
+          .page-container {
+            width: 100% !important;
+            height: 100% !important;
+            page-break-after: always;
+            overflow: hidden !important;
+            box-sizing: border-box;
+          }
+          .container {
+            width: 100% !important;
+            height: 100% !important;
+            page-break-after: avoid;
+            overflow: hidden !important;
+            box-sizing: border-box;
+            padding: ${fontSizes.padding} !important;
+            padding-top: 8px !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            padding-bottom: 8px !important;
+            border: 0 !important;
+          }
+        }
+        
+        html, body {
+          margin: 0;
+          padding: 0;
+          font-family: Arial, sans-serif;
+          font-size: ${fontSizes.baseFontSize}px;
+          line-height: ${fontSizes.lineHeight};
+          font-weight: 500;
+          letter-spacing: ${fontSizes.letterSpacing};
+        }
+        
+        .page-container {
+          width: ${selectedTemplate?.width || 384}px;
+          height: ${selectedTemplate?.height || 384}px;
+          page-break-after: always;
+          margin: 0 auto;
+          box-sizing: border-box;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .container {
+          width: ${selectedTemplate?.width || 384}px;
+          height: ${selectedTemplate?.height || 384}px;
+          margin: 0 auto;
+          padding: ${fontSizes.padding};
+          padding-top: 8px;
+          padding-left: 12px;
+          padding-right: 12px;
+          padding-bottom: 8px;
+          box-sizing: border-box;
+          position: relative;
+          border: 0;
+          overflow: hidden;
+        }
+        
+        .header {
+          font-size: ${fontSizes.titleFontSize}px;
+          font-weight: bold;
+          margin-top: 5px;
+          margin-bottom: 1px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        
+        .order-id {
+          font-size: ${fontSizes.titleFontSize}px;
+          font-weight: bold;
+          margin-bottom: 2px;
+          text-align: center;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        
+        .barcode-wrapper {
+          text-align: center;
+          margin: 4px auto;
+          height: ${barcodeHeight}px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          width: 90%;
+        }
+        
+        .barcode-img {
+          max-height: 100%;
+          max-width: 100%;
+        }
+        
+        .address-box {
+          border: ${fontSizes.borderWidth} solid #000;
+          padding: ${fontSizes.padding};
+          margin-bottom: 2px;
+          min-height: 80px;
+          overflow: hidden;
+        }
+        
+        .to-name {
+          font-weight: bold;
+          font-size: ${fontSizes.titleFontSize}px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        
        .address-line {
-         font-size: ${firstLayout.baseFontSize}px;
-         line-height: ${firstLayout.lineHeight};
-         margin-bottom: 1px;
-         white-space: nowrap;
-         overflow: hidden;
-         text-overflow: ellipsis;
-       }
-       
-       .details-grid {
-         display: grid;
-         grid-template-columns: 1fr 1fr;
-         gap: ${firstLayout.sectionSpacing}px;
-         margin-bottom: ${firstLayout.sectionSpacing}px;
-         flex-shrink: 0;
-       }
-       
-       .detail-box {
-         border: ${firstLayout.borderWidthPx}px solid #000;
-         padding: ${firstLayout.paddingPx}px;
-         height: ${firstLayout.detailBoxHeight}px;
-         overflow: hidden;
-         display: flex;
-         flex-direction: column;
-         justify-content: flex-start;
-       }
-       
-       .detail-title {
-         font-weight: bold;
-         font-size: ${firstLayout.baseFontSize}px;
-         margin-bottom: 2px;
-         line-height: ${firstLayout.lineHeight};
-       }
-       
-       .detail-line {
-         font-size: ${firstLayout.smallFontSize}px;
-         line-height: ${firstLayout.lineHeight};
-         margin-bottom: 1px;
-         white-space: nowrap;
-         overflow: hidden;
-         text-overflow: ellipsis;
-       }
-
-       .product-section {
-         border: ${firstLayout.borderWidthPx}px solid #000;
-         padding: ${firstLayout.paddingPx}px;
-         flex: 1;
-         overflow: hidden;
-         display: flex;
-         flex-direction: column;
-         min-height: 0;
-         margin-top: ${firstLayout.sectionSpacing + 2}px;
-       }
-
-       .product-title {
-         font-weight: bold;
-         font-size: ${firstLayout.baseFontSize}px;
-         margin-bottom: 2px;
-         line-height: ${firstLayout.lineHeight};
-         flex-shrink: 0;
-       }
-
-       .product-list {
-         font-size: ${firstLayout.smallFontSize}px;
-         line-height: ${firstLayout.lineHeight};
-         word-wrap: break-word;
-         overflow-wrap: break-word;
-         flex: 1;
-         overflow: hidden;
-         display: -webkit-box;
-         -webkit-box-orient: vertical;
-         -webkit-line-clamp: 4;
-       }
-     </style>
-   `
-
-    // Generate HTML for all bills using IMPROVED layout system
+          white-space: normal;
+          word-wrap: break-word;
+          line-height: ${fontSizes.lineHeight};
+          font-size: ${fontSizes.baseFontSize}px;
+          overflow: hidden;
+        }
+        
+        .details-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 2px;
+          margin-bottom: 2px;
+        }
+        
+        .detail-box {
+          border: ${fontSizes.borderWidth} solid #000;
+          padding: ${fontSizes.padding};
+          min-height: 65px;
+          overflow: hidden;
+        }
+        
+        .detail-title {
+          font-weight: bold;
+          font-size: ${fontSizes.titleFontSize}px;
+        }
+        
+        .product-section {
+          border: ${fontSizes.borderWidth} solid #000;
+          padding: ${fontSizes.padding};
+          margin-top: 2px;
+          min-height: 50px;
+          overflow: hidden;
+        }
+  
+        .product-title {
+          font-weight: bold;
+          font-size: ${fontSizes.titleFontSize}px;
+          margin-bottom: 1px;
+        }
+  
+        .product-list {
+          white-space: normal;
+          word-wrap: break-word;
+          overflow: hidden;
+        }
+      </style>
+    `;
+    
+    // Format product list with adaptive font sizes
+    const formatProductsList = (products: Array<{ productName?: string; name?: string; quantity: number }>): string => {
+      if (!products || products.length === 0) {
+        return "No products";
+      }
+      
+      const totalProducts = products.length;
+      let fontSize = fontSizes.smallFontSize;
+      let lineHeight = fontSizes.lineHeight;
+      
+      if (totalProducts > 6) {
+        fontSize = Math.max(fontSize - 1, 3);
+        lineHeight = Math.max(lineHeight - 0.1, 0.7);
+      }
+      
+      if (totalProducts > 10) {
+        fontSize = Math.max(fontSize - 1, 2);
+        lineHeight = Math.max(lineHeight - 0.1, 0.6);
+      }
+      
+      if (selectedTemplate?.id === '2x4') {
+        return products.map(product => {
+          const productName = product.productName || product.name;
+          const truncatedName = productName && productName.length > 10 
+            ? productName.substring(0, 9) + '…' 
+            : productName;
+          return `${truncatedName} × ${product.quantity}`;
+        }).join(', ');
+      }
+      
+      return products.map(product => {
+        const productName = product.productName || product.name;
+        return `${productName} × ${product.quantity}`;
+      }).join(', ');
+    };
+    
+    // Create a layout template based on the selected template size
     const generateLabelHTML = (bill: BillResponseType) => {
-      // Generate EXACT same layout data as print preview for each bill
-      const layout = generateUnifiedLayoutData(bill, selectedTemplate, previewFromAddress)
-
+      const totalItems = bill.product_details.reduce((total, product) => total + product.quantity, 0);
+      const productCount = bill.product_details.length;
+      
+      const fromAddress = {
+        name: bill.organisation_details.Name || previewFromAddress.name,
+        street: bill.organisation_details.street || previewFromAddress.street,
+        city: bill.organisation_details.district || previewFromAddress.city,
+        state: bill.organisation_details.state || previewFromAddress.state,
+        zipCode: bill.organisation_details.pincode || previewFromAddress.zipCode,
+        phone: bill.organisation_details.phone || previewFromAddress.phone
+      };
+      
       return `
-     <div class="page-container">
-       <div class="container">
-         <div class="header">
-           Ship Via: ${layout.formattedOrder.shipVia}
-         </div>
-         
-         <div class="order-id">
-           ${layout.fromAddress.name} Order ID: ${bill.bill_details.bill_no}
-         </div>
-         
-         <div class="barcode-wrapper">
-           <svg id="barcode-${bill.bill_id}" class="barcode-img"></svg>
-         </div>
-         
-         <div class="address-box">
-           <div class="to-name">TO ${layout.formattedOrder.toAddress.name}</div>
-           <div class="address-line">${(bill.customer_details.flat_no ? bill.customer_details.flat_no + ", " : "") + bill.customer_details.street}</div>
-           <div class="address-line">${bill.customer_details.district}</div>
-           <div class="address-line">${bill.customer_details.state} ${bill.customer_details.pincode}</div>
-           <div class="address-line">${bill.customer_details.phone}</div>
-         </div>
-         
-         <div class="details-grid">
-           <div class="detail-box">
-             <div class="detail-title">From:</div>
-             <div class="detail-line">${layout.fromAddress.name}</div>
-             <div class="detail-line">${layout.fromAddress.street}</div>
-             <div class="detail-line">${layout.fromAddress.city}</div>
-             <div class="detail-line">${layout.fromAddress.state}-${layout.fromAddress.zipCode}</div>
-             <div class="detail-line">Mobile: ${layout.fromAddress.phone}</div>
-           </div>
-           
-           <div class="detail-box">
-             <div class="detail-title">Prepaid Order:</div>
-             <div class="detail-line">Date: ${layout.formattedOrder.orderDate}</div>
-             <div class="detail-line">Weight: ${bill.shipping_details?.weight || ""}</div>
-             <div class="detail-line">No. of Items: ${layout.formattedOrder.totalItems}</div>
-             <div class="detail-line">Source: Instagram</div>
-             <div class="detail-line">Packed By: </div>
-           </div>
-         </div>
-         
-         <div class="product-section">
-           <div class="product-title">Products:</div>
-           <div class="product-list">
-             ${layout.productText}
-           </div>
-         </div>
-       </div>
-     </div>
-   `
-    }
-
-    const billsHTML = bills.map((bill) => generateLabelHTML(bill)).join("")
-
-    // Create barcode initialization code for each bill using UNIFIED settings
-    const barcodeInitScript = bills
-      .map((bill) => {
-        const layout = generateUnifiedLayoutData(bill, selectedTemplate, previewFromAddress)
-        return `
-     JsBarcode("#barcode-${bill.bill_id}", "${bill.bill_details.bill_no}", {
-       format: "CODE128",
-       width: ${layout.barcodeWidth},
-       height: ${layout.barcodeHeight},
-       displayValue: false,
-       margin: 0
-     });
-   `
-      })
-      .join("\n")
-
+        <div class="page-container">
+          <div class="container">
+            <div class="header">
+              Ship Via: ${bill.shipping_details?.method_name || 'Standard Shipping'}
+            </div>
+            
+            <div class="order-id">
+              ${fromAddress.name} Order ID: ${bill.bill_details.bill_no}
+            </div>
+            
+            <div class="barcode-wrapper">
+              <svg id="barcode-${bill.bill_id}" class="barcode-img"></svg>
+            </div>
+            
+            <div class="address-box">
+              <div class="to-name">TO ${bill.customer_details.name}</div>
+              <div class="address-line">${(bill.customer_details.flat_no ? bill.customer_details.flat_no + ', ' : '') + bill.customer_details.street}</div>
+              <div class="address-line">${bill.customer_details.district}</div>
+              <div class="address-line">${bill.customer_details.state} ${bill.customer_details.pincode}</div>
+              <div class="address-line">${bill.customer_details.phone}</div>
+            </div>
+            
+            <div class="details-grid">
+              <div class="detail-box">
+                <div class="detail-title">From:</div>
+                <div class="address-line">${fromAddress.name}</div>
+                <div class="address-line">${fromAddress.street}</div>
+                <div class="address-line">${fromAddress.city}</div>
+                <div class="address-line">${fromAddress.state}-${fromAddress.zipCode}</div>
+                <div class="address-line">Mobile: ${fromAddress.phone}</div>
+              </div>
+              
+              <div class="detail-box">
+                <div class="detail-title">
+                  Prepaid Order:
+                </div>
+                <div class="address-line">Date: ${bill.bill_details.date}, ${bill.bill_details.time}</div>
+                <div class="address-line">Weight: </div>
+                <div class="address-line">No. of Items: ${totalItems}</div>
+                <div class="address-line">Source: Instagram</div>
+                <div class="address-line">Packed By: </div>
+              </div>
+            </div>
+            
+            <div class="product-section" style="min-height: ${50 - (productCount > 6 ? 10 : 0)}px;">
+              <div class="product-title">Products:</div>
+              <div class="product-list" style="line-height: ${productCount > 6 ? Math.max(fontSizes.lineHeight - 0.2, 0.7) : fontSizes.lineHeight}; font-size: ${productCount > 6 ? Math.max(fontSizes.smallFontSize - 1, 3) : fontSizes.smallFontSize}px;">
+                ${formatProductsList(bill.product_details)}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+    
+    // Generate HTML for all bills
+    const billsHTML = bills.map(bill => generateLabelHTML(bill)).join('');
+    
+    // Create barcode initialization code for each bill
+    const barcodeInitScript = bills.map(bill => {
+      return `
+        JsBarcode("#barcode-${bill.bill_id}", "${bill.bill_details.bill_no}", { 
+          format: "CODE128", 
+          width: ${barcodeWidth},
+          height: ${barcodeHeight},
+          displayValue: false,
+          margin: 0
+        });
+      `;
+    }).join('\n');
+  
     return `
-     <!DOCTYPE html>
-     <html lang="en">
-       <head>
-         <meta charset="UTF-8">
-         <title>Print Bills</title>
-         ${styles}
-         <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
-       </head>
-       <body>
-         ${billsHTML}
-         <script>
-           document.addEventListener('DOMContentLoaded', function() {
-             try {
-               ${barcodeInitScript}
-               
-               setTimeout(function() {
-                 window.print();
-                 setTimeout(() => window.close(), 500);
-               }, 1000);
-             } catch(error) {
-               console.error('Error generating barcodes:', error);
-               alert('There was an error generating the barcodes. Please try again.');
-             }
-           });
-         </script>
-       </body>
-     </html>
-   `
-  }
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <title>Print Bills</title>
+          ${styles}
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+        </head>
+        <body>
+          ${billsHTML}
+          <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              try {
+                ${barcodeInitScript}
+                
+                setTimeout(function() {
+                  window.print();
+                  setTimeout(() => window.close(), 500);
+                }, 1000);
+              } catch(error) {
+                console.error('Error generating barcodes:', error);
+                alert('There was an error generating the barcodes. Please try again.');
+              }
+            });
+          </script>
+        </body>
+      </html>
+    `;
+  };
 
   const renderTemplatePreview = (template: TemplateType) => {
     return (

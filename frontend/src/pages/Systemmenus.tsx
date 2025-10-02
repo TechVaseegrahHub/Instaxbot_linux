@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom'; // Import Link from react-router-dom
 
 interface PayloadItem {
   id: string;
@@ -53,9 +54,9 @@ const InstaxBotSystemMenu: React.FC = () => {
 
   // Save system menu function with tenent ID
   const handleSaveSystemMenu = async () => {
-    // For demonstration, we'll use a mock tenentId since localStorage is not available
-    const tenentId = 'demo-tenant-123';
-    console.log('Using demo tenentId:', tenentId);
+    // Get tenentId from localStorage
+    const tenentId = localStorage.getItem('tenentid');
+    console.log('Retrieved tenentId from localStorage:', tenentId);
     
     if (!tenentId) {
       setErrorMessage('Tenent ID not found. Please log in again.');
@@ -89,7 +90,7 @@ const InstaxBotSystemMenu: React.FC = () => {
 
       console.log('Sending request with payloads:', requestBody);
 
-      const response = await fetch('https://app.instaxbot.com/api/systemmenusroute/save-system-menu', {
+      const response = await fetch('https://ddcf6bc6761a.ngrok-free.app/api/systemmenusroute/save-system-menu', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -137,8 +138,15 @@ const InstaxBotSystemMenu: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
+    <div className="min-h-screen bg-gray-100 py-8 px-4 w-full">
+      {/* Back Button is now here, matching the previous file's structure */}
+      <Link
+        to="/setting" // You can change this to the appropriate back path
+        className="inline-block mb-6 ml-4 px-4 py-2 bg-white text-black-600 rounded-md font-medium hover:bg-pink-50 shadow-sm transition-all duration-300 border border-pink-200"
+      >
+        ← Back
+      </Link>
+      <div className="w-full max-w-2xl mx-auto">
         {/* Top Header - Compact like the image */}
         <div className="bg-white shadow-md rounded-xl mb-4 py-5 text-center">
           <h1 className="text-2xl font-semibold text-gray-800">

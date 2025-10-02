@@ -13,25 +13,24 @@ import FrontTermsAndConditions from './pages/FrontTerms&conditions';
 import Frontpage from './pages/Embed';
 import FileUpload from './pages/FileUpload';
 import Templates from './pages/Templates';
-import WelcomeTemplate from './pages/WelcomeTemplate';
 import ProductTemplate from './pages/ProductTemplate';
 import TechProductTemplate from './pages/TechProductTemplate';
 import EcommerceProductTemplate from './pages/EcommerceProductTemplate';
 import ProductTypeTemplate from './pages/ProductTypeTemplate';
 import ProductDetailsTemplate from './pages/ProductDetailsTemplate';
 import ProductDetailsTemplateTech from './pages/ProductDetailsTemplateTech';
-import ProductListTemplate from './pages/ProductListTemplate';
-import ProductListTemplateTech from './pages/ProductListTemplateTech';
 import IcebreakersTemplate from './pages/IcebreakersTemplate';
 import ProtectedRoute from './components/ProtectedRoute';
 import WebsiteURLConfiguration from './pages/WebsiteUrlConfiguration' 
 import AdminPage from './pages/AdminPage'
 import CartPage from './pages/CartPage'
+import CartPageSize from './pages/CartPageSize'
 import ProductInventory from './pages/ProductInventory'
+import ProductInventorySize from './pages/ProductInventorySize'
 import ShippingPage from './pages/ShippingPage'
 import ProductCatalog from './pages/ProductCatalog'
+import ProductCatalogSize from './pages/ProductCatalogSize'
 import CommentsContainer from './pages/CommentsContainer'
-import InstagramCommentAutomation from './pages/InstagramCommentAutomation'
 import TemplateMessage from './pages/TemplateMessage'
 import RazorpayConnect from './pages/RazorpayConnect'
 import Printing from './pages/Printing'
@@ -41,11 +40,13 @@ import Order from './pages/Order'
 import Tracking from './pages/Tracking'
 import Welcomepage from './pages/Welcomepage'
 import Systemmenus from './pages/Systemmenus'
+import AllCommentsAutomation from './pages/AllCommentsAutomation'
+import Setting from './pages/Setting'
 // Import ProtectedRoute
 
 function AppContent() {
   const location = useLocation();
-  const isLoginPage = ['/login', '/', '/signup','/frontpolicy','/frontterms','/admin','/cart','/productcatalog'].includes(location.pathname);
+  const isLoginPage = ['/login', '/', '/signup','/frontpolicy','/frontterms','/admin','/cart','/productcatalog','/cartsize','/productcatalogsize'].includes(location.pathname);
 
   return (
     <div className="flex h-screen">
@@ -68,17 +69,11 @@ function AppContent() {
         path="/cart" 
          element={<CartPage />}  
       />
-          {/*
-          <Route path="/terms" element={<TermsAndConditions />} />
-          <Route path="/policy" element={<PrivacyPolicy />} />
-          <Route path="/embed" element={<Frontpage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/live-chat" element={<LiveChat />} />
-          <Route path="/profile"element={<Profile />} />
-          <Route path="/upload" element={<FileUpload />} />
-    */}
-    
-           {/* Protected routes */}
+      <Route 
+        path="/cartsize" 
+         element={<CartPageSize />}  
+      />
+          
            <Route 
         path="/admin" 
         element={<ProtectedRoute element={<AdminPage />} />} 
@@ -127,22 +122,12 @@ function AppContent() {
         path="/product-details-template" 
         element={<ProtectedRoute element={<ProductDetailsTemplate />} />} 
       />
-      <Route 
-        path="/product-list-template" 
-        element={<ProtectedRoute element={<ProductListTemplate />} />} 
-      />
+      
       <Route 
         path="/product-details-template-tech" 
         element={<ProtectedRoute element={<ProductDetailsTemplateTech />} />} 
       />
-      <Route 
-        path="/product-list-template-tech" 
-        element={<ProtectedRoute element={<ProductListTemplateTech />} />} 
-      />
-      <Route 
-        path="/welcome-template" 
-        element={<ProtectedRoute element={<WelcomeTemplate />} />} 
-      />
+      
       <Route 
         path="/website-url-configuration" 
         element={<ProtectedRoute element={<WebsiteURLConfiguration />} />} 
@@ -162,6 +147,10 @@ function AppContent() {
     <Route 
         path="/product-inventory" 
         element={<ProtectedRoute element={<ProductInventory />} />} 
+      />
+      <Route 
+        path="/product-inventory-size" 
+        element={<ProtectedRoute element={<ProductInventorySize />} />} 
       />
       <Route 
         path="/template_message" 
@@ -196,9 +185,20 @@ function AppContent() {
         element={<ProtectedRoute element={<Systemmenus />} />} 
       />
       <Route 
+          path="/setting" 
+          element={<ProtectedRoute element={<Setting />} />} 
+            />
+      <Route 
   path="/productcatalog" 
   element={<ProtectedRoute 
     element={<ProductCatalog />} 
+    bypassTokenCheck={true} 
+  />}  
+/>
+<Route 
+  path="/productcatalogsize" 
+  element={<ProtectedRoute 
+    element={<ProductCatalogSize />} 
     bypassTokenCheck={true} 
   />}  
 />
@@ -207,10 +207,7 @@ function AppContent() {
         path="/comments_chat" 
         element={<ProtectedRoute element={<CommentsContainer />} />} 
       />
-      <Route 
-        path="/comments_automation" 
-        element={<ProtectedRoute element={<InstagramCommentAutomation />} />} 
-      />
+      
       <Route 
         path="/shipping-setting" 
         element={<ProtectedRoute element={<ShippingPage />} />} 
@@ -220,6 +217,10 @@ function AppContent() {
         path="/razorpay_connect" 
         element={<ProtectedRoute element={<RazorpayConnect />} />} 
       />
+      <Route 
+              path="/allcomments_automation" 
+              element={<ProtectedRoute element={<AllCommentsAutomation />} />} 
+            />
         </Routes>
         </main>
       </div>
@@ -236,3 +237,5 @@ function App() {
 }
 
 export default App;
+
+

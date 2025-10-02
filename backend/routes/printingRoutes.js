@@ -133,7 +133,11 @@ router.get('/print-bill/:billId', async (req, res) => {
       return res.status(400).json({ error: 'Bill ID is required' });
     }
 
-    // This is causing the error - we need to modify the query to avoid casting to ObjectId
+    if (!tenentId) {
+      return res.status(400).json({ error: 'Tenant ID is required' });
+    }
+
+    // Build query to find order by multiple possible identifiers
     let query = {
       tenentId: tenentId
     };
@@ -161,21 +165,40 @@ router.get('/print-bill/:billId', async (req, res) => {
       return res.status(404).json({ error: 'Bill not found' });
     }
 
-    console.log(`Bill ${billId} found for tenant: ${tenentId}, ID: ${order._id}`);
+    console.log(`Bill ${billId} found for tenant: ${tenentId}, ID: ${order._id}, Status: ${order.status}`);
+
+    // ✅ NEW: Check if order status allows printing - block PENDING orders
+    if (order.status === 'CREATED') {
+      console.log(`Bill ${billId} cannot be printed due to PENDING status`);
+      return res.status(400).json({ 
+        error: 'Cannot print order with PENDING status. Order must be processed before printing.',
+        currentStatus: order.status,
+        billId: billId
+      });
+    }
 
     const fromAddress = await getOrganizationAddress(tenentId);
     const formattedBill = formatOrderForPrinting(order, fromAddress);
 
-    // ✅ UPDATE: Update both print_status and status to 'PRINTED'
+    // ✅ UPDATE: Conditionally update status based on current order status
+    const preservedStatuses = ['COMPLETED', 'PACKED', 'HOLDED'];
+    
+    let updateFields = {
+      print_status: 'PRINTED',
+      last_printed_at: new Date()
+    };
+
+    // Only update status to 'PRINTED' if current status is not in preserved statuses
+    if (!preservedStatuses.includes(order.status)) {
+      updateFields.status = 'PRINTED';
+    }
+
     await Order.updateOne(
       { _id: order._id },
-      { $set: { 
-        print_status: 'PRINTED', 
-        status: 'PRINTED',
-        last_printed_at: new Date() 
-      } }
+      { $set: updateFields }
     );
-    console.log(`Bill ${billId} marked as printed with status updated`);
+    
+    console.log(`Bill ${billId} marked as printed. Status: ${order.status} -> ${updateFields.status || order.status}`);
 
     res.status(200).json(formattedBill);
   } catch (error) {
@@ -196,7 +219,7 @@ router.get('/bulkPrinting', async (req, res) => {
     const pendingOrders = await Order.find({
       tenentId: tenentId,
       print_status: 'PENDING',
-      status: { $in: ['paid', 'shipped', 'processing', 'PACKED'] }
+      status: { $in: ['processing','PROCESSING'] }
     }).limit(limit).sort({ created_at: 1 });
 
     console.log(`Found ${pendingOrders.length} pending orders for tenant: ${tenentId}`);
@@ -246,7 +269,7 @@ async function getRemainingPendingCount(tenentId) {
     const count = await Order.countDocuments({
       tenentId: tenentId,
       print_status: 'PENDING',
-      status: { $in: ['paid', 'shipped', 'processing', 'PACKED'] }
+      status: { $in: ['processing', 'PROCESSING'] }
     });
     console.log(`Counted ${count} remaining pending orders for tenant: ${tenentId}`);
     return count;
@@ -325,11 +348,24 @@ function formatOrderForPrinting(order, orgAddress) {
   const totalWeight = calculateOrderWeight(order.products);
 
   // Create a product list showing quantity and number of specific products
-  const productDetails = order.products.map(product => ({
-    productName: product.product_name,
-    quantity: product.quantity || 1,
-    productCount: order.products.filter(p => p.product_name === product.product_name).length
-  }));
+  // Include selectedunit in product name if it exists
+  const productDetails = order.products.map(product => {
+    let productDisplayName = product.product_name;
+    
+    // Add selectedunit to product name if it exists
+    if (product.selectedunit) {
+      productDisplayName += ` (${product.selectedunit})`;
+    }
+    
+    return {
+      productName: productDisplayName,
+      quantity: product.quantity || 1,
+      productCount: order.products.filter(p => p.product_name === product.product_name).length,
+      // Keep original data for reference
+      originalProductName: product.product_name,
+      selectedUnit: product.selectedunit || null
+    };
+  });
 
   return {
     bill_id: order.orderId || order.bill_no,
@@ -347,8 +383,8 @@ function formatOrderForPrinting(order, orgAddress) {
       bill_no: order.orderId || order.bill_no,
       date: new Date(order.created_at).toLocaleDateString(),
       time: new Date(order.created_at).toLocaleTimeString(),
-      payment_method: order.payment_method || 'Online',
-      payment_status: order.payment_status || (order.status === 'paid' ? 'Paid' : 'Pending')
+      payment_method: order.payment_method || order.paymentMethod || 'Online',
+      payment_status: order.payment_status || order.paymentStatus || (order.status === 'paid' ? 'Paid' : 'Pending')
     },
     product_details: productDetails,
     shipping_details: {
@@ -473,7 +509,7 @@ router.get('/pending-count', async (req, res) => {
     const count = await Order.countDocuments({
       tenentId: tenentId,
       print_status: 'PENDING',
-      status: { $in: ['paid', 'shipped', 'processing', 'PACKED'] }
+      status: { $in: ['processing', 'PROCESSING'] }
     });
 
     console.log(`Pending print count for tenant ${tenentId}: ${count} (out of ${totalOrders} total orders)`);
@@ -848,10 +884,10 @@ router.post('/reset-print-status', async (req, res) => {
     console.log(`Resetting print status for tenant: ${tenentId}, days back: ${daysBack}`);
 
     // ✅ UPDATE: Include 'PACKED' and 'PRINTED' in valid statuses
-    const validStatuses = ['paid', 'shipped', 'processing', 'completed', 'PACKED', 'PRINTED'];
+    const validStatuses = ['processing', 'paid', 'shipped', 'delivered', 'completed', 'CREATED', 'PENDING', 'PROCESSING', 'PAID', 'SHIPPED', 'DELIVERED', 'COMPLETED','HOLDED'];
     const orderStatuses = status ?
       (Array.isArray(status) ? status.filter(s => validStatuses.includes(s)) : [status].filter(s => validStatuses.includes(s)))
-      : ['paid', 'shipped', 'processing', 'PACKED'];
+      : ['processing', 'paid', 'shipped', 'delivered', 'completed', 'CREATED', 'PENDING', 'PROCESSING', 'PAID', 'SHIPPED', 'DELIVERED','COMPLETED','HOLDED'];
 
     if (orderStatuses.length === 0) {
       return res.status(400).json({ error: 'No valid order statuses provided' });

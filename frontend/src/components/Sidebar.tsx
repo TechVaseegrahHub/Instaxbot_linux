@@ -3,58 +3,56 @@ import { Link, useLocation } from "react-router-dom";
 import {
   Home,
   ReceiptText,
-  MessageCircle, // Live Chat and Comments Chat
-  MessageSquare, // Comments Chat
-  FileText,
+  MessageCircle, // Live Chat
+  MessageSquareDot, // Comments Chat
+ 
   ChevronLeft,
-  ChevronRight,
   CircleUserRound,
   Instagram,
-  FileUp,
-  Link2,
+  
   Boxes,
-  Truck,
   Printer,
   Package,
-  CreditCard,
+  MapPin, // Tracking
+  PauseCircle,
+  ShieldCheck, // Terms & Condition
   Menu,
-  X
+  X,
+  Settings,
+  MessageSquareMore
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  HoverCard,
-  HoverCardTrigger,
-  HoverCardContent,
-} from "@/components/ui/hover-card";
-import instaxbotLogo from "../assets/instaxbot_Logo.png";
+import instaxbotLogo from "../assets/Instaxbot_Logo.png";
 
 export default function Sidebar() {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   const scrollRef = useRef<HTMLElement>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const type = localStorage.getItem("type");
 
   // Check if the screen is mobile
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth < 768);
-      // Auto-close sidebar on mobile
       if (window.innerWidth < 768) {
         setIsOpen(false);
-      } else {
-        setIsOpen(true);
       }
     };
 
-    // Check initially
     checkIfMobile();
-
-    // Add event listener
     window.addEventListener("resize", checkIfMobile);
-
-    // Clean up
     return () => window.removeEventListener("resize", checkIfMobile);
   }, []);
+
+  // Handle hover behavior for desktop
+  useEffect(() => {
+    if (!isMobile) {
+      setIsOpen(isHovering);
+    }
+  }, [isHovering, isMobile]);
 
   // Restore scroll position after route changes
   useEffect(() => {
@@ -63,7 +61,7 @@ export default function Sidebar() {
       if (savedScrollPosition && scrollRef.current) {
         scrollRef.current.scrollTop = parseInt(savedScrollPosition, 10);
       }
-    }, 100); // Small delay to ensure DOM is ready
+    }, 100);
 
     return () => clearTimeout(timer);
   }, [location.pathname]);
@@ -74,38 +72,55 @@ export default function Sidebar() {
     }
   };
 
+  const handleMouseEnter = () => {
+    if (!isMobile) {
+      setIsHovering(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isMobile) {
+      setIsHovering(false);
+    }
+  };
+
   const navItems = [
     { name: "Home", icon: Home, path: "/dashboard" },
     { name: "Connect Instagram", icon: Instagram, path: "/embed" },
     { name: "Live Chat", icon: MessageCircle, path: "/live-chat" },
-    { name: "Comments Chat", icon: MessageSquare, path: "/comments_chat" },
-    { name: "Comments Automation", icon: MessageCircle, path: "/comments_automation" },
-    { name: "Template Message", icon: MessageSquare, path: "/template_message" },
-    { name: "File Upload", icon: FileUp, path: "/upload" },
-    { name: "Templates", icon: FileText, path: "/templates" },
-    { name: "Icebreakers Configuration", icon: FileText, path: "/icebreakers-template" },
-    { name: "Website Url Configuration", icon: Link2, path: "/website-url-configuration" },
+    { name: "Comments Chat", icon: MessageSquareDot, path: "/comments_chat" },
+    { name: "All Comments Automation", icon: MessageSquareMore, path: "/allcomments_automation" },
+    
     { name: "Products", icon: Boxes, path: "/product-inventory" },
-    { name: "Order", icon: Package, path: "/order" },
+    { name: "Order", icon: ReceiptText, path: "/order" },
     { name: "Printing", icon: Printer, path: "/printing" },
     { name: "Packing", icon: Package, path: "/packing" },
-    { name: "Holding", icon: Package, path: "/holding" },
-    { name: "Tracking", icon: Package, path: "/tracking" },
-    { name: "Shipping Settings", icon: Truck, path: "/shipping-setting" },
-    { name: "Razorpay Connect", icon: CreditCard, path: "/razorpay_connect" },
-    { name: "Systemmenus Template", icon: FileText, path: "/systemmenus" }
+    { name: "Holding", icon: PauseCircle, path: "/holding" },
+    { name: "Tracking", icon: MapPin, path: "/tracking" },
+   
+    { name: "Setting", icon: Settings, path: "/setting" }
   ];
 
   const bottomNavItems = [
-    { name: "Terms&condition", icon: ReceiptText, path: "/terms" },
-    { name: "PrivacyPolicy", icon: ReceiptText, path: "/policy" },
+    { name: "Terms & Condition", icon: ShieldCheck, path: "/terms" },
+    { name: "Privacy Policy", icon: ReceiptText, path: "/policy" },
     { name: "My Profile", icon: CircleUserRound, path: "/profile" },
   ];
+
+  if (type === "size-variation") {
+    const index = navItems.findIndex(item => item.name === "Products");
+    if (index !== -1) {
+      navItems[index] = {
+        name: "Products",
+        icon: Boxes,
+        path: "/product-inventory-size"
+      };
+    }
+  }
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
   const handleNavClick = () => {
-    // Save current scroll position before navigation
     if (scrollRef.current) {
       sessionStorage.setItem('sidebarScrollPosition', scrollRef.current.scrollTop.toString());
     }
@@ -113,32 +128,49 @@ export default function Sidebar() {
   };
 
   const renderNavItems = (items: any[]) => (
-    items.map((item) => (
-      <HoverCard key={item.name}>
-        <HoverCardTrigger asChild>
+    items.map((item) => {
+      const isActive = location.pathname === item.path;
+      return (
+        <div key={item.name} className="relative group">
           <Link
             to={item.path}
             className={`
-              flex items-center w-full p-2 mb-3 rounded
-              hover:bg-[#ffd9ed] transition-colors
-              ${isOpen ? "justify-start" : "justify-center"}
+              flex items-center w-full rounded-lg
+              hover:bg-[#ffd9ed] transition-all duration-200
+              ${isActive ? 'bg-[#f585c0] text-white hover:bg-[#f585c0]' : ''}
+              ${isOpen ? "justify-start p-2 mb-1" : "justify-center p-2 mb-1 mx-1"}
+              relative overflow-hidden
             `}
             onClick={handleNavClick}
           >
-            <item.icon className="h-5 w-5" />
-            {isOpen && <span className="ml-3 text-sm">{item.name}</span>}
+            <item.icon 
+              className={`
+                h-5 w-5 flex-shrink-0
+                ${isActive ? 'text-white' : ''}
+                ${!isOpen ? 'mx-auto' : ''}
+              `} 
+            />
+            {isOpen && (
+              <span className={`ml-3 text-sm transition-opacity duration-200 whitespace-nowrap overflow-hidden text-ellipsis ${
+                isActive ? 'text-white' : ''
+              }`}>
+                {item.name}
+              </span>
+            )}
           </Link>
-        </HoverCardTrigger>
-        {!isOpen && !isMobile && (
-          <HoverCardContent side="left">
-            <span className="text-sm">{item.name}</span>
-          </HoverCardContent>
-        )}
-      </HoverCard>
-    ))
+          
+          {/* Tooltip for collapsed state */}
+          {!isOpen && !isMobile && (
+            <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-50 shadow-lg">
+              {item.name}
+              <div className="absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-900 rotate-45"></div>
+            </div>
+          )}
+        </div>
+      );
+    })
   );
 
-  // Mobile drawer component
   const MobileDrawer = () => (
     <>
       {!isOpen && (
@@ -154,61 +186,37 @@ export default function Sidebar() {
       
       {isOpen && (
         <div className="fixed inset-0 z-40 flex md:hidden">
-          {/* Overlay */}
           <div 
             className="fixed inset-0 bg-black/20" 
             onClick={toggleSidebar}
           />
           
-          {/* Sidebar */}
-          <div className="relative flex flex-col w-64 max-w-xs md:-mt-6 bg-white h-full">
-            <div className="flex justify-between items-center p-4 border-b">
-              <div className="flex items-center">
+          <div className="relative flex flex-col w-64 max-w-xs bg-white h-full shadow-lg overflow-hidden">
+            <div className="flex justify-between items-center p-4 border-b flex-shrink-0">
+              <div className="flex items-center min-w-0 flex-1">
                 <img
                   src={instaxbotLogo}
                   alt="InstaX Bot Logo"
-                  className="h-5 w-5 mr-2"
+                  className="h-5 w-5 mr-2 flex-shrink-0"
                 />
-                <h1 className="text-sm font-semibold">
+                <h1 className="text-sm font-semibold truncate">
                   <span className="text-[#f585c0]">InstaX</span> bot
                 </h1>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-[#575656]"
+                className="text-[#575656] flex-shrink-0 ml-2"
                 onClick={toggleSidebar}
               >
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            
-            <nav className="flex-1 px-3 py-4 overflow-y-auto">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  className="flex items-center w-full p-2 mb-3 rounded hover:bg-[#ffd9ed] transition-colors"
-                  onClick={toggleSidebar}
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span className="ml-3 text-sm">{item.name}</span>
-                </Link>
-              ))}
+            <nav className="flex-1 px-3 py-4 overflow-y-auto overflow-x-hidden">
+              {renderNavItems(navItems)}
             </nav>
-            
-            <div className="px-3 py-4 border-t">
-              {bottomNavItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  className="flex items-center w-full p-2 mb-3 rounded hover:bg-[#ffd9ed] transition-colors"
-                  onClick={toggleSidebar}
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span className="ml-3 text-sm">{item.name}</span>
-                </Link>
-              ))}
+            <div className="px-3 py-4 border-t flex-shrink-0 overflow-hidden">
+              {renderNavItems(bottomNavItems)}
             </div>
           </div>
         </div>
@@ -216,59 +224,70 @@ export default function Sidebar() {
     </>
   );
 
-  // Regular sidebar for desktop and tablet
   const RegularSidebar = () => (
     <aside
+      ref={sidebarRef}
       className={`
         ${isOpen ? "w-64" : "w-20"}
         flex flex-col
         bg-white
         text-[#000]
-        min-h-screen
+        h-screen
         transition-all duration-300 ease-in-out
-        hidden md:flex
+        md:flex
+        shadow-lg
+        border-r border-gray-200
+        relative
+        z-30
+        overflow-hidden
       `}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      {/* Header with Logo */}
-      <div className="flex justify-between items-center p-4">
-        <div className="flex items-center">
+      {/* Header - Fixed height */}
+      <div className={`flex items-center border-b border-gray-200 flex-shrink-0 overflow-hidden ${
+        isOpen ? "justify-between p-4" : "justify-center p-3"
+      }`}>
+        <div className="flex items-center min-w-0 flex-1">
           <img
             src={instaxbotLogo}
             alt="InstaX Bot Logo"
-            className={`h-5 w-5 mr-2 ${isOpen ? "block" : "hidden"}`}
+            className={`h-6 w-6 flex-shrink-0 ${!isOpen ? 'mx-auto' : ''}`}
           />
-          <h1 className={`text-sm font-semibold ${isOpen ? "block" : "hidden"}`}>
-            <span className="text-[#f585c0]">InstaX</span> bot
-          </h1>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-[#575656] hover:bg-[#ffd9ed]"
-          onClick={toggleSidebar}
-        >
-          {isOpen ? (
-            <ChevronLeft className="h-5 w-5" />
-          ) : (
-            <ChevronRight className="h-5 w-5" />
+          {isOpen && (
+            <h1 className="ml-2 text-sm font-semibold transition-opacity duration-200 truncate">
+              <span className="text-[#f585c0]">InstaX</span> bot
+            </h1>
           )}
-          <span className="sr-only">Toggle Sidebar</span>
-        </Button>
+        </div>
+        
+        {isOpen && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-[#575656] hover:bg-[#ffd9ed] opacity-60 hover:opacity-100 flex-shrink-0 ml-2"
+            onClick={() => setIsHovering(false)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="sr-only">Collapse Sidebar</span>
+          </Button>
+        )}
       </div>
 
-      {/* Main Navigation */}
-      <nav 
-        ref={scrollRef}
-        className="flex-1 px-3 py-4 overflow-y-auto"
-        onScroll={handleScroll}
-        style={{ scrollBehavior: 'auto' }}
-      >
-        {renderNavItems(navItems)}
-      </nav>
+      {/* Navigation - Flexible height with scroll only when needed */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <nav 
+          ref={scrollRef}
+          className={`flex-1 py-4 overflow-y-auto overflow-x-hidden ${isOpen ? 'px-3' : 'px-2'}`}
+          onScroll={handleScroll}
+        >
+          {renderNavItems(navItems)}
+        </nav>
 
-      {/* Bottom Navigation */}
-      <div className="px-3 py-4 mt-auto">
-        {renderNavItems(bottomNavItems)}
+        {/* Bottom Navigation - Fixed at bottom */}
+        <div className={`py-4 border-t border-gray-200 flex-shrink-0 overflow-hidden ${isOpen ? 'px-3' : 'px-2'}`}>
+          {renderNavItems(bottomNavItems)}
+        </div>
       </div>
     </aside>
   );
@@ -279,3 +298,4 @@ export default function Sidebar() {
     </>
   );
 }
+

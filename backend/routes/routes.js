@@ -48,13 +48,16 @@ const uploadmediaRoutes = require('./uploadmediaRoutes');
 const urlconfigurationRoutes = require('./urlconfigurationRoutes');
 const imageProxyRoutes = require('./imageProxyRoutes');
 const productinventoryRoutes = require('./productinventoryRoutes');
+const productinventorysizeRoutes = require('./productinventorysizeRoutes');
 const checkoutRoutes = require('./checkoutRoutes');
 const shippingmethodRoutes = require('./shippingmethodRoutes');
 const productRoutes = require('./productRoutes')
+const productsizeRoutes = require('./productsizeRoutes')
 const verifysecurityaccessTokenRoutes = require('./verifysecurityaccessTokenRoutes')
 const commentAutomationRoutes = require('./commentAutomationRoutes');
 const templatemessageRoutes = require('./templatemessageRoutes');
 const cartRoutes = require('./cartRoutes');
+const cartsizeRoutes = require('./cartsizeRoutes');
 const razorpayRoutes = require('./razorpayRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
 const printingRoutes = require('./printingRoutes');
@@ -67,6 +70,8 @@ const welcomepageRoutes = require('./welcomepageRoutes');
 const pincodeRoutes = require('./pincodeRoutes');
 const orderdetailRoutes = require('./orderdetailRoutes');
 const systemmenusRoutes = require('./systemmenusRoutes');
+
+const storycommentsAutomationRoutes = require('./storycommentsAutomationRoutes');
 //const websocketRoutes = require('./websocketRoutes');
 //const franc = require('franc-min');
 //const WebSocket = require('ws');
@@ -94,7 +99,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const openai = new OpenAI({
   apiKey: OPENAI_API_KEY // This is the default and can be omitted
 });
-const appUrl = process.env.APP_URL || 'https://app.instaxbot.com';
+const appUrl = process.env.APP_URL || 'https://ddcf6bc6761a.ngrok-free.app';
 const regex = /\w+/g;
 let vectorDB = [];
 const config = require("../services/config");
@@ -133,13 +138,16 @@ router.use('/urlconfigurationroute', urlconfigurationRoutes);
 router.use('/imageproxyroutes', imageProxyRoutes);
 router.use('/commentAutomationroute', commentAutomationRoutes);
 router.use('/productinventoryroute',productinventoryRoutes);
+router.use('/productinventorysizeroute',productinventorysizeRoutes);
 router.use('/checkoutroute',checkoutRoutes);
 router.use('/shippingmethodroute',shippingmethodRoutes);
 router.use('/productroute',productRoutes);
+router.use('/productsizeroute',productsizeRoutes);
 router.use('/verifysecurityaccesstokenroute',verifysecurityaccessTokenRoutes);
 router.use('/webhookroute', webhookRoutes);
 router.use('/templatemessageroute', templatemessageRoutes);
 router.use('/cartroute', cartRoutes);
+router.use('/cartsizeroute', cartsizeRoutes);
 router.use('/razorpayroute', razorpayRoutes);
 router.use('/dashboardroute', dashboardRoutes);
 router.use('/printingroute', printingRoutes);
@@ -152,7 +160,7 @@ router.use('/pincoderoute', pincodeRoutes);
 router.use('/orderdetailroute', orderdetailRoutes);
 router.use('/systemmenusroute', systemmenusRoutes);
 
-
+router.use('/storycommentsAutomationroute', storycommentsAutomationRoutes);
 
 
 const getJwtIdentity = (req, res, next) => {
@@ -209,3 +217,5 @@ router.all("*", function(req, res, next) {
   });
 
 module.exports = router;
+
+

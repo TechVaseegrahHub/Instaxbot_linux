@@ -1,568 +1,515 @@
-"use client"
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { MessageSquare, Bot, FileText, ArrowUpRight, Calendar, Layers, Instagram, ShoppingCart, DollarSign, Hash } from "lucide-react";
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  MessageSquare,
-  Bot,
-  FileText,
-  BarChart4,
-  PieChart,
-  Calendar,
-  Layers,
-  TrendingUp,
-  Instagram,
-  Filter,
-  ChevronDown
-} from "lucide-react"
-import axios from "axios"
-
-interface DailyStats {
-  date: string
-  robotMessages: number
-  templateMessages: number
-  carouselMessages: number
-  commentReplies: number
-  totalMessages?: number
-}
-
-interface ChartData {
-  dailyStats: DailyStats[]
+// Updated AllTimeStats to include totalStoryComments
+interface AllTimeStats {
+  totalOrders: number;
+  totalRevenue: number;
+  totalCount: number;
+  activeCustomers?: number;
+  totalStoryComments: number; // New field for story comments
 }
 
 interface DashboardStats {
-  totalResponses: number
-  botMessages: number
-  robotMessages: number
-  templateMessages: number
-  carouselMessages: number
-  commentReplies: number
-  loading: boolean
+  totalResponses: number;
+  botMessages: number;
+  robotMessages: number;
+  templateMessages: number;
+  carouselMessages: number;
+  commentReplies: number;
+  totalOrders: number;
+  totalOrderAmount: number;
+  loading: boolean;
+  allTimeStats: AllTimeStats;
 }
 
 export default function Dashboard() {
+  // Get tenentId from localStorage
+  const [tenentId, setTenentId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Updated color palette to match the image
+  const COLORS = {
+    salesBlue: "#3B82F6",
+    marketingPurple: "#8B5CF6",
+    statusGreen: "#10B981",
+    statusTeal: "#14B8A6",
+    statusBlue: "#0EA5E9",
+    statusIndigo: "#6366F1",
+    statusViolet: "#8B5CF6",
+    categoryBlue: "#3B82F6",
+    categoryIndigo: "#6366F1",
+    categoryPurple: "#8B5CF6",
+    categoryPink: "#EC4899",
+    gradientStart: "#3B82F6",
+    gradientEnd: "#8B5CF6"
+  };
+
   const [stats, setStats] = useState<DashboardStats>({
     totalResponses: 0,
     botMessages: 0,
     robotMessages: 0,
-    templateMessages: 0,
+    templateMessages: 0, 
     carouselMessages: 0,
     commentReplies: 0,
+    totalOrders: 0,
+    totalOrderAmount: 0.00,
     loading: true,
-  })
+    allTimeStats: {
+      totalOrders: 0,
+      totalRevenue: 0.00,
+      totalCount: 0,
+      activeCustomers: 0,
+      totalStoryComments: 0 // Initial state for story comments
+    }
+  });
+  
+  const [timeframe, setTimeframe] = useState("today");
 
-  const [timeframe, setTimeframe] = useState("week")
-  const [chartData, setChartData] = useState<ChartData | null>(null)
-  const [] = useState(false)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-
+  // Initialize tenentId from localStorage on component mount
   useEffect(() => {
-    fetchDashboardData()
+    const storedTenentId = localStorage.getItem('tenentid');
+    console.log('🔍 FRONTEND: Retrieved tenentId from localStorage:', storedTenentId);
+    setTenentId(storedTenentId);
+  }, []);
 
-    const handleClickOutside = (event: MouseEvent) => {
-      const dropdown = document.getElementById("timeframe-dropdown")
-      if (
-        dropdown &&
-        !dropdown.contains(event.target as Node) &&
-        !(event.target as Element).closest('button[type="button"]')
-      ) {
-        dropdown.classList.add("hidden")
-      }
+  // Enhanced fetch data function with better error handling and logging
+  const fetchData = async () => {
+    if (!tenentId) {
+      console.warn("❌ FRONTEND: No tenentId found in localStorage");
+      setError("No tenant ID found");
+      return;
     }
 
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [timeframe])
-
-  const handleTimeframeChange = (value: string) => {
-    setTimeframe(value)
-    setDropdownOpen(false)
-  }
-
-  const fetchDashboardData = async () => {
+    console.log(`🚀 FRONTEND: Starting API call for tenentId: ${tenentId}, timeframe: ${timeframe}`);
+    
     try {
-      if (typeof window === "undefined") {
-        setMockData()
-        return
+      setStats(prev => ({ ...prev, loading: true }));
+      setError(null);
+      
+      // Add additional headers for ngrok
+      const apiUrl = `https://ddcf6bc6761a.ngrok-free.app/api/dashboardroute/dashboard?timeframe=${timeframe}&tenentId=${tenentId}`;
+      console.log('📍 FRONTEND: API URL:', apiUrl);
+
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true', // Skip ngrok browser warning
+          'Accept': 'application/json',
+        },
+      });
+
+      console.log('📡 FRONTEND: Response status:', response.status);
+      console.log('📡 FRONTEND: Response headers:', response.headers);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const tenentId = localStorage.getItem("tenentid")
+      const data = await response.json();
+      console.log('📊 FRONTEND: Raw API response:', data);
 
-      if (!tenentId) {
-        setMockData()
-        return
-      }
+      if (data.success) {
+        console.log('✅ FRONTEND: API call successful, updating state...');
+        console.log('📊 FRONTEND: Orders data from API:', {
+          totalOrders: data.totalOrders,
+          totalOrderAmount: data.totalOrderAmount,
+          allTimeOrders: data.allTimeStats?.totalOrders,
+          allTimeRevenue: data.allTimeStats?.totalRevenue
+        });
 
-      const response = await axios.get(
-        `/api/dashboardroute/dashboard?tenentId=${tenentId}&timeframe=${timeframe}`
-      )
-
-      if (response.data.success) {
-        setStats({
-          totalResponses: response.data.totalResponses || 0,
-          botMessages: response.data.botMessages || 0,
-          robotMessages: response.data.robotMessages || 0,
-          templateMessages: response.data.templateMessages || 0,
-          carouselMessages: response.data.carouselMessages || 0,
-          commentReplies: response.data.commentReplies || 0,
+        const newStats = {
+          totalResponses: data.totalResponses || 0,
+          botMessages: data.botMessages || 0,
+          robotMessages: data.robotMessages || 0,
+          templateMessages: data.templateMessages || 0,
+          carouselMessages: data.carouselMessages || 0,
+          commentReplies: data.commentReplies || 0,
+          totalOrders: data.totalOrders || 0,
+          totalOrderAmount: data.totalOrderAmount || 0.00,
           loading: false,
-        })
+          allTimeStats: {
+            totalOrders: data.allTimeStats?.totalOrders || 0,
+            totalRevenue: data.allTimeStats?.totalRevenue || 0.00,
+            totalCount: data.allTimeStats?.totalCount || 0,
+            activeCustomers: data.allTimeStats?.activeCustomers || 0,
+            totalStoryComments: data.allTimeStats?.totalStoryComments || 0 // Get story comments from API
+          }
+        };
 
-        setChartData(response.data.chartData)
+        console.log('🔄 FRONTEND: Setting new stats:', newStats);
+        setStats(newStats);
+      } else {
+        console.error('❌ FRONTEND: API returned success: false', data);
+        setError(data.message || 'API call failed');
+        setStats(prev => ({ ...prev, loading: false }));
       }
     } catch (error) {
-      console.error("Error fetching dashboard data:", error)
-      setMockData()
+      console.error("❌ FRONTEND: Failed to fetch dashboard data:", error);
+      setError(error instanceof Error ? error.message : 'Unknown error occurred');
+      setStats(prev => ({ ...prev, loading: false }));
     }
-  }
+  };
 
-  const setMockData = () => {
-    setStats({
-      totalResponses: 15,
-      botMessages: 11,
-      robotMessages: 11,
-      templateMessages: 4,
-      carouselMessages: 0,
-      commentReplies: 0,
-      loading: false,
-    })
+  // Effect to fetch data when tenentId or timeframe changes
+  useEffect(() => {
+    if (tenentId) {
+      console.log('🔄 FRONTEND: tenentId or timeframe changed, fetching data...');
+      fetchData();
+    }
+  }, [tenentId, timeframe]);
 
-    setChartData({
-      dailyStats: [
-        {
-          date: "2025-05-08",
-          robotMessages: 2,
-          templateMessages: 1,
-          carouselMessages: 0,
-          commentReplies: 0,
-        },
-        {
-          date: "2025-05-09",
-          robotMessages: 1,
-          templateMessages: 0,
-          carouselMessages: 0,
-          commentReplies: 0,
-        },
-        {
-          date: "2025-05-10",
-          robotMessages: 2,
-          templateMessages: 1,
-          carouselMessages: 0,
-          commentReplies: 0,
-        },
-        {
-          date: "2025-05-11",
-          robotMessages: 1,
-          templateMessages: 0,
-          carouselMessages: 0,
-          commentReplies: 0,
-        },
-        {
-          date: "2025-05-12",
-          robotMessages: 2,
-          templateMessages: 1,
-          carouselMessages: 0,
-          commentReplies: 0,
-        },
-        {
-          date: "2025-05-13",
-          robotMessages: 1,
-          templateMessages: 0,
-          carouselMessages: 0,
-          commentReplies: 0,
-        },
-        {
-          date: "2025-05-14",
-          robotMessages: 2,
-          templateMessages: 1,
-          carouselMessages: 0,
-          commentReplies: 0,
-        },
-      ],
-    })
+  const handleTimeframeChange = (selectedTimeframe: string) => {
+    console.log(`🔄 FRONTEND: Timeframe changed to: ${selectedTimeframe}`);
+    setTimeframe(selectedTimeframe);
+  };
+
+  // Get timeframe display text
+  const getTimeframeDisplayText = () => {
+    switch (timeframe) {
+      case 'today':
+        return 'Today';
+      case 'week':
+        return 'Last 7 Days';
+      case 'month':
+        return 'Last 30 Days';
+      case 'year':
+        return 'Last 12 Months';
+      default:
+        return 'Today';
+    }
+  };
+
+  // Get growth percentage text based on timeframe
+  const getGrowthText = () => {
+    switch (timeframe) {
+      case 'today':
+        return 'vs yesterday';
+      case 'week':
+        return 'vs last week';
+      case 'month':
+        return 'vs last month';
+      case 'year':
+        return 'vs last year';
+      default:
+        return 'vs previous period';
+    }
+  };
+
+  // Show loading or error state if no tenentId
+  if (!tenentId) {
+    return (
+      <div className="min-h-screen p-6 bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-gray-600 mb-4">
+            <Instagram className="w-12 h-12 mx-auto mb-2" style={{ color: COLORS.salesBlue }} />
+            No Tenant ID Found
+          </div>
+          <p className="text-gray-500">Please ensure you're logged in properly.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50 p-3 sm:p-5 md:p-8">
+    <div className="min-h-screen p-6 bg-white">
       <div className="max-w-7xl mx-auto">
-      {/* Enhanced Header with Better UI */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 sm:mb-12 gap-4 sm:gap-0">
-        {/* Logo/Title Section */}
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="bg-gradient-to-br from-pink-500 to-purple-600 p-2.5 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <Instagram className="h-6 w-6 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-800 bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-purple-600 truncate">
-              Instagram Analytics
-            </h1>
-            <p className="text-sm text-gray-500 mt-1 hidden sm:block">
-              Track your Instagram automation performance
-            </p>
-          </div>
-        </div>
-
-        {/* Controls Section - Enhanced */}
-        <div className="flex flex-col sm:flex-row items-stretch gap-3 w-full sm:w-auto">
-          {/* Enhanced Timeframe Dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="bg-white w-full sm:w-48 flex items-center justify-between gap-2 px-4 py-3 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 text-gray-700 font-medium group"
-            >
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-purple-500 group-hover:text-purple-600 transition-colors" />
-                <span className="truncate">
-                  {timeframe === "week" 
-                    ? "Last 7 Days" 
-                    : timeframe === "month" 
-                      ? "Last 30 Days" 
-                      : "Last 12 Months"}
-                </span>
-              </div>
-              <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {dropdownOpen && (
-              <div className="absolute mt-2 w-full sm:w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-10 overflow-hidden">
-                <button
-                  onClick={() => handleTimeframeChange("week")}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                    timeframe === "week" 
-                      ? "bg-purple-100 text-purple-700 font-medium" 
-                      : "hover:bg-gray-50 text-gray-700"
-                  }`}
-                >
-                  Last 7 Days
-                </button>
-                <div className="border-t border-gray-100"></div>
-                <button
-                  onClick={() => handleTimeframeChange("month")}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                    timeframe === "month" 
-                      ? "bg-purple-100 text-purple-700 font-medium" 
-                      : "hover:bg-gray-50 text-gray-700"
-                  }`}
-                >
-                  Last 30 Days
-                </button>
-                <div className="border-t border-gray-100"></div>
-                <button
-                  onClick={() => handleTimeframeChange("year")}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                    timeframe === "year" 
-                      ? "bg-purple-100 text-purple-700 font-medium" 
-                      : "hover:bg-gray-50 text-gray-700"
-                  }`}
-                >
-                  Last 12 Months
-                </button>
+        <div className="flex flex-col sm:flex-row items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-black mb-2">Instagram Analytics Dashboard</h1>
+            <p className="text-gray-600">Analytics for {getTimeframeDisplayText()}</p>
+           
+            {error && (
+              <div className="text-red-500 text-sm mt-2 p-2 bg-red-50 rounded">
+                Error: {error}
               </div>
             )}
           </div>
-
-          {/* Enhanced Last Updated Card */}
-          <div className="w-full md:w-auto bg-white px-4 py-2.5 rounded-lg shadow-md border border-gray-100 flex items-center gap-2">
-      <Calendar className="h-4 w-4 text-purple-500" />
-      <span className="text-sm text-gray-500">Last updated:</span>
-      <span className="text-sm font-medium text-gray-700">
-        {new Date().toLocaleDateString()}
-      </span>
-    </div>
-  </div>
-</div>
-        {/* Loading State */}
-        {stats.loading ? (
-          <div className="flex justify-center items-center h-64 bg-white/50 backdrop-blur-sm rounded-2xl shadow-md">
-            <div className="flex flex-col items-center">
-              <div className="h-14 w-14 rounded-full border-4 border-t-purple-500 border-r-purple-300 border-b-purple-100 border-l-purple-300 animate-spin mb-4"></div>
-              <p className="text-base text-gray-600 font-medium">Loading analytics data...</p>
+          
+          <div className="flex items-center gap-3">
+            <select 
+              value={timeframe}
+              onChange={(e) => handleTimeframeChange(e.target.value)}
+              className="bg-white px-3 py-2 rounded-lg border-2 border-blue-500 shadow-lg text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={stats.loading}
+            >
+              <option value="today">Today</option>
+              <option value="week">Last 7 Days</option>
+              <option value="month">Last 30 Days</option>
+              <option value="year">Last 12 Months</option>
+            </select>
+            
+            <div className="bg-white p-2 rounded-lg shadow-lg flex items-center gap-2 border-2 border-blue-500">
+              <Calendar className="h-4 w-4 text-blue-600" />
+              <span className="text-sm text-gray-600">Last updated:</span>
+              <span className="text-sm font-medium text-gray-800">{new Date().toLocaleDateString()}</span>
             </div>
+          </div>
+        </div>
+
+        {/* All Time Statistics Section */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-black mb-4">All Time Statistics</h2>
+          
+          {/* Updated grid to be responsive for 4 items */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-blue-500 bg-white hover:bg-gray-50 transform hover:-translate-y-1">
+              <CardContent className="pt-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                    <p className="text-xs text-gray-500 mb-1">All processed orders</p>
+                    <h3 className="text-2xl font-bold text-gray-800 mt-1">{stats.allTimeStats.totalOrders}</h3>
+                  </div>
+                  <div 
+                    className="p-3 rounded-full shadow-lg"
+                    style={{ background: `linear-gradient(135deg, ${COLORS.salesBlue}, ${COLORS.marketingPurple})` }}
+                  >
+                    <ShoppingCart className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-purple-500 bg-white hover:bg-gray-50 transform hover:-translate-y-1">
+              <CardContent className="pt-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                    <p className="text-xs text-gray-500 mb-1">From all orders</p>
+                    <h3 className="text-2xl font-bold text-gray-800 mt-1">₹{stats.allTimeStats.totalRevenue.toLocaleString()}</h3>
+                  </div>
+                  <div 
+                    className="p-3 rounded-full shadow-lg"
+                    style={{ background: `linear-gradient(135deg, ${COLORS.marketingPurple}, ${COLORS.statusIndigo})` }}
+                  >
+                    <DollarSign className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-green-500 bg-white hover:bg-gray-50 transform hover:-translate-y-1">
+              <CardContent className="pt-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Active Customers</p>
+                    <p className="text-xs text-gray-500 mb-1">Repeat customers</p>
+                    <h3 className="text-2xl font-bold text-gray-800 mt-1">
+                      {stats.allTimeStats.activeCustomers || 0}
+                    </h3>
+                  </div>
+                  <div 
+                    className="p-3 rounded-full shadow-lg"
+                    style={{ background: `linear-gradient(135deg, ${COLORS.statusGreen}, ${COLORS.statusTeal})` }}
+                  >
+                    <Hash className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* New Card for Story Comments */}
+            <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-pink-500 bg-white hover:bg-gray-50 transform hover:-translate-y-1">
+              <CardContent className="pt-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Story Comments</p>
+                    <p className="text-xs text-gray-500 mb-1">All automated story replies</p>
+                    <h3 className="text-2xl font-bold text-gray-800 mt-1">
+                      {stats.allTimeStats.totalStoryComments.toLocaleString()}
+                    </h3>
+                  </div>
+                  <div 
+                    className="p-3 rounded-full shadow-lg"
+                    style={{ background: `linear-gradient(135deg, ${COLORS.categoryPink}, ${COLORS.marketingPurple})` }}
+                  >
+                    <MessageSquare className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Current Period Statistics */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-black mb-4">{getTimeframeDisplayText()} Analytics</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-blue-500 bg-white hover:bg-gray-50 transform hover:-translate-y-1">
+              <CardContent className="pt-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Orders - {getTimeframeDisplayText()}</p>
+                    <p className="text-xs text-gray-500 mb-1">Total orders in {getTimeframeDisplayText().toLowerCase()}</p>
+                    <h3 className="text-2xl font-bold text-gray-800 mt-1">{stats.totalOrders}</h3>
+                  </div>
+                  <div 
+                    className="p-3 rounded-full shadow-lg"
+                    style={{ background: `linear-gradient(135deg, ${COLORS.salesBlue}, ${COLORS.marketingPurple})` }}
+                  >
+                    <ShoppingCart className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+                <div className="flex items-center mt-2 text-xs font-medium" style={{ color: COLORS.salesBlue }}>
+                  <ArrowUpRight className="w-3 h-3 mr-1" />
+                  <span>18% {getGrowthText()}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-purple-500 bg-white hover:bg-gray-50 transform hover:-translate-y-1">
+              <CardContent className="pt-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Revenue - {getTimeframeDisplayText()}</p>
+                    <p className="text-xs text-gray-500 mb-1">Total revenue in {getTimeframeDisplayText().toLowerCase()}</p>
+                    <h3 className="text-2xl font-bold text-gray-800 mt-1">₹{stats.totalOrderAmount.toLocaleString()}</h3>
+                  </div>
+                  <div 
+                    className="p-3 rounded-full shadow-lg"
+                    style={{ background: `linear-gradient(135deg, ${COLORS.marketingPurple}, ${COLORS.statusIndigo})` }}
+                  >
+                    <DollarSign className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+                <div className="flex items-center mt-2 text-xs font-medium" style={{ color: COLORS.marketingPurple }}>
+                  <ArrowUpRight className="w-3 h-3 mr-1" />
+                  <span>22% {getGrowthText()}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {stats.loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div 
+              className="animate-spin rounded-full h-12 w-12 border-4 border-blue-300"
+              style={{ borderTopColor: COLORS.salesBlue }}
+            ></div>
+            <span className="ml-4 text-gray-600">Loading dashboard data...</span>
           </div>
         ) : (
-          <>
-            {/* Stats Cards with Enhanced Styling */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
-              {/* Card 1 - Total Responses */}
-              <Card className="shadow-lg hover:shadow-xl transition-all duration-300 bg-white border-0 overflow-hidden group">
-                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-                <CardContent className="p-6">
+          <div className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {/* Total Bot Responses Card */}
+              <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-blue-500 bg-white hover:bg-gray-50 transform hover:-translate-y-1">
+                <CardContent className="pt-6">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1.5">Total Responses</p>
-                      <h3 className="text-3xl font-bold text-gray-800 mb-1">{stats.totalResponses}</h3>
-                      <div className="flex items-center mt-2 text-sm text-green-600">
-                        <TrendingUp className="w-4 h-4 mr-1" />
-                        <span>12% from last {timeframe}</span>
-                      </div>
+                      <p className="text-sm font-medium text-gray-600">Total Bot Responses</p>
+                      <h3 className="text-2xl font-bold text-gray-800 mt-1">{stats.totalResponses.toLocaleString()}</h3>
                     </div>
-                    <div className="bg-blue-100 p-3 rounded-xl group-hover:bg-blue-500 group-hover:text-white transition-colors duration-300">
-                      <MessageSquare className="w-6 h-6 text-blue-600 group-hover:text-white transition-colors duration-300" />
+                    <div 
+                      className="p-2 rounded-full shadow-lg"
+                      style={{ background: `linear-gradient(135deg, ${COLORS.salesBlue}, ${COLORS.marketingPurple})` }}
+                    >
+                      <Instagram className="w-5 h-5 text-white" />
                     </div>
+                  </div>
+                  <div className="flex items-center mt-2 text-xs font-medium" style={{ color: COLORS.salesBlue }}>
+                    <ArrowUpRight className="w-3 h-3 mr-1" />
+                    <span>18% {getGrowthText()}</span>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Card 2 - Robot Messages */}
-              <Card className="shadow-lg hover:shadow-xl transition-all duration-300 bg-white border-0 overflow-hidden group">
-                <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
-                <CardContent className="p-6">
+              {/* Robot Messages Card */}
+              <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-blue-500 bg-white hover:bg-gray-50 transform hover:-translate-y-1">
+                <CardContent className="pt-6">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1.5">Robot Messages</p>
-                      <h3 className="text-3xl font-bold text-gray-800 mb-1">{stats.robotMessages}</h3>
-                      <div className="flex items-center mt-2 text-sm text-green-600">
-                        <TrendingUp className="w-4 h-4 mr-1" />
-                        <span>8% from last {timeframe}</span>
-                      </div>
+                      <p className="text-sm font-medium text-gray-600">Robot Messages 🤖</p>
+                      <h3 className="text-2xl font-bold text-gray-800 mt-1">{stats.robotMessages.toLocaleString()}</h3>
                     </div>
-                    <div className="bg-indigo-100 p-3 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors duration-300">
-                      <Bot className="w-6 h-6 text-indigo-600 group-hover:text-white transition-colors duration-300" />
+                    <div 
+                      className="p-2 rounded-full shadow-lg"
+                      style={{ background: `linear-gradient(135deg, ${COLORS.marketingPurple}, ${COLORS.statusIndigo})` }}
+                    >
+                      <Bot className="w-5 h-5 text-white" />
                     </div>
+                  </div>
+                  <div className="flex items-center mt-2 text-xs font-medium" style={{ color: COLORS.marketingPurple }}>
+                    <ArrowUpRight className="w-3 h-3 mr-1" />
+                    <span>15% {getGrowthText()}</span>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Card 3 - Template Messages */}
-              <Card className="shadow-lg hover:shadow-xl transition-all duration-300 bg-white border-0 overflow-hidden group">
-                <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
-                <CardContent className="p-6">
+              {/* Template Messages Card */}
+              <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-purple-500 bg-white hover:bg-gray-50 transform hover:-translate-y-1">
+                <CardContent className="pt-6">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1.5">Template Messages</p>
-                      <h3 className="text-3xl font-bold text-gray-800 mb-1">{stats.templateMessages}</h3>
-                      <div className="flex items-center mt-2 text-sm text-green-600">
-                        <TrendingUp className="w-4 h-4 mr-1" />
-                        <span>15% from last {timeframe}</span>
-                      </div>
+                      <p className="text-sm font-medium text-gray-600">Template Messages</p>
+                      <h3 className="text-2xl font-bold text-gray-800 mt-1">{stats.templateMessages.toLocaleString()}</h3>
                     </div>
-                    <div className="bg-purple-100 p-3 rounded-xl group-hover:bg-purple-500 group-hover:text-white transition-colors duration-300">
-                      <FileText className="w-6 h-6 text-purple-600 group-hover:text-white transition-colors duration-300" />
+                    <div 
+                      className="p-2 rounded-full shadow-lg"
+                      style={{ background: `linear-gradient(135deg, ${COLORS.statusIndigo}, ${COLORS.statusViolet})` }}
+                    >
+                      <FileText className="w-5 h-5 text-white" />
                     </div>
+                  </div>
+                  <div className="flex items-center mt-2 text-xs font-medium" style={{ color: COLORS.statusIndigo }}>
+                    <ArrowUpRight className="w-3 h-3 mr-1" />
+                    <span>22% {getGrowthText()}</span>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Card 4 - Carousel Messages */}
-              <Card className="shadow-lg hover:shadow-xl transition-all duration-300 bg-white border-0 overflow-hidden group">
-                <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>
-                <CardContent className="p-6">
+              {/* Carousel Messages Card */}
+              <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-green-500 bg-white hover:bg-gray-50 transform hover:-translate-y-1">
+                <CardContent className="pt-6">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1.5">Carousel Messages</p>
-                      <h3 className="text-3xl font-bold text-gray-800 mb-1">{stats.carouselMessages}</h3>
-                      <div className="flex items-center mt-2 text-sm text-green-600">
-                        <TrendingUp className="w-4 h-4 mr-1" />
-                        <span>9% from last {timeframe}</span>
-                      </div>
+                      <p className="text-sm font-medium text-gray-600">Carousel Messages</p>
+                      <h3 className="text-2xl font-bold text-gray-800 mt-1">{stats.carouselMessages.toLocaleString()}</h3>
                     </div>
-                    <div className="bg-green-100 p-3 rounded-xl group-hover:bg-green-500 group-hover:text-white transition-colors duration-300">
-                      <Layers className="w-6 h-6 text-green-600 group-hover:text-white transition-colors duration-300" />
+                    <div 
+                      className="p-2 rounded-full shadow-lg"
+                      style={{ background: `linear-gradient(135deg, ${COLORS.statusGreen}, ${COLORS.statusTeal})` }}
+                    >
+                      <Layers className="w-5 h-5 text-white" />
                     </div>
+                  </div>
+                  <div className="flex items-center mt-2 text-xs font-medium" style={{ color: COLORS.statusGreen }}>
+                    <ArrowUpRight className="w-3 h-3 mr-1" />
+                    <span>12% {getGrowthText()}</span>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Card 5 - Comment Replies */}
-              <Card className="shadow-lg hover:shadow-xl transition-all duration-300 bg-white border-0 overflow-hidden group">
-                <div className="absolute top-0 left-0 w-1 h-full bg-pink-500"></div>
-                <CardContent className="p-6">
+              {/* Comment Replies Card */}
+              <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-teal-500 bg-white hover:bg-gray-50 transform hover:-translate-y-1">
+                <CardContent className="pt-6">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1.5">Comment Replies</p>
-                      <h3 className="text-3xl font-bold text-gray-800 mb-1">{stats.commentReplies}</h3>
-                      <div className="flex items-center mt-2 text-sm text-green-600">
-                        <TrendingUp className="w-4 h-4 mr-1" />
-                        <span>10% from last {timeframe}</span>
-                      </div>
+                      <p className="text-sm font-medium text-gray-600">Comment Replies</p>
+                      <h3 className="text-2xl font-bold text-gray-800 mt-1">{stats.commentReplies.toLocaleString()}</h3>
                     </div>
-                    <div className="bg-pink-100 p-3 rounded-xl group-hover:bg-pink-500 group-hover:text-white transition-colors duration-300">
-                      <MessageSquare className="w-6 h-6 text-pink-600 group-hover:text-white transition-colors duration-300" />
+                    <div 
+                      className="p-2 rounded-full shadow-lg"
+                      style={{ background: `linear-gradient(135deg, ${COLORS.statusTeal}, ${COLORS.statusBlue})` }}
+                    >
+                      <MessageSquare className="w-5 h-5 text-white" />
                     </div>
+                  </div>
+                  <div className="flex items-center mt-2 text-xs font-medium" style={{ color: COLORS.statusTeal }}>
+                    <ArrowUpRight className="w-3 h-3 mr-1" />
+                    <span>10% {getGrowthText()}</span>
                   </div>
                 </CardContent>
               </Card>
             </div>
-
-            {/* Charts with Enhanced Styling */}
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-             {/* Chart 1 - Distribution */}
-<Card className="shadow-lg bg-white border-0 overflow-hidden">
-  <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-purple-50 to-pink-50 p-6">
-    <CardTitle className="text-xl font-bold text-gray-800 flex items-center gap-2">
-      <PieChart className="w-5 h-5 text-purple-500" />
-      Message Type Distribution
-    </CardTitle>
-  </CardHeader>
-  <CardContent className="h-80 p-6">
-    {stats.totalResponses > 0 ? (
-      <div className="w-full h-full flex flex-col items-center justify-center gap-8">
-        {/* Enhanced Circular Visualization */}
-        <div className="relative w-48 h-48">
-          {/* Background circle */}
-          <div className="absolute inset-0 rounded-full border-8 border-gray-100"></div>
-          
-          {/* Dynamic Pie Chart using conic-gradient */}
-          <div 
-            className="absolute inset-0 rounded-full"
-            style={{
-              background: `conic-gradient(
-                #6366F1 0% ${(stats.robotMessages / stats.totalResponses) * 100}%,
-                #8B5CF6 ${(stats.robotMessages / stats.totalResponses) * 100}% ${((stats.robotMessages + stats.templateMessages) / stats.totalResponses) * 100}%,
-                #10B981 ${((stats.robotMessages + stats.templateMessages) / stats.totalResponses) * 100}% ${((stats.robotMessages + stats.templateMessages + stats.carouselMessages) / stats.totalResponses) * 100}%,
-                #EC4899 ${((stats.robotMessages + stats.templateMessages + stats.carouselMessages) / stats.totalResponses) * 100}% 100%
-              )`,
-              transform: 'rotate(0deg)'
-            }}
-          ></div>
-          
-          {/* Center text */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="bg-white rounded-full w-24 h-24 flex items-center justify-center shadow-sm">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-800">
-                  {stats.totalResponses}
-                </div>
-                <div className="text-xs text-gray-500">Total</div>
-              </div>
-            </div>
           </div>
-        </div>
-        
-        {/* Enhanced Legend */}
-        <div className="grid grid-cols-2 gap-4 w-full max-w-md">
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <div className="w-3 h-3 rounded-full bg-indigo-500 mr-3"></div>
-              <span className="text-sm font-medium">Robot</span>
-            </div>
-            <span className="font-bold text-gray-800">
-              {Math.round((stats.robotMessages / stats.totalResponses) * 100)}%
-            </span>
-          </div>
-          
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <div className="w-3 h-3 rounded-full bg-purple-500 mr-3"></div>
-              <span className="text-sm font-medium">Templates</span>
-            </div>
-            <span className="font-bold text-gray-800">
-              {Math.round((stats.templateMessages / stats.totalResponses) * 100)}%
-            </span>
-          </div>
-          
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <div className="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
-              <span className="text-sm font-medium">Carousel</span>
-            </div>
-            <span className="font-bold text-gray-800">
-              {Math.round((stats.carouselMessages / stats.totalResponses) * 100)}%
-            </span>
-          </div>
-          
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <div className="w-3 h-3 rounded-full bg-pink-500 mr-3"></div>
-              <span className="text-sm font-medium">Replies</span>
-            </div>
-            <span className="font-bold text-gray-800">
-              {Math.round((stats.commentReplies / stats.totalResponses) * 100)}%
-            </span>
-          </div>
-        </div>
-      </div>
-    ) : (
-      <div className="flex flex-col items-center justify-center gap-4 w-full h-full">
-        <div className="bg-gray-100 p-6 rounded-full">
-          <PieChart className="w-12 h-12 text-gray-400" />
-        </div>
-        <div className="text-base text-gray-500 text-center">
-          No data available for the selected timeframe
-        </div>
-      </div>
-    )}
-  </CardContent>
-</Card>
-              {/* Chart 2 - Trends */}
-              <Card className="shadow-lg bg-white border-0 overflow-hidden">
-                <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-6">
-                  <CardTitle className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                    <BarChart4 className="w-5 h-5 text-blue-500" />
-                    Response Trends
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="h-80 p-6">
-                  {chartData?.dailyStats && chartData.dailyStats.length > 0 ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center gap-8">
-                      {/* Simple bar visualization */}
-                      <div className="w-full flex items-end justify-between h-32 px-4">
-                        {chartData.dailyStats.map((day, index) => {
-                          const total = day.robotMessages + day.templateMessages + day.carouselMessages + day.commentReplies;
-                          const height = total > 0 ? (total / 3) * 100 : 5; // Scale for visualization
-                          return (
-                            <div key={index} className="flex flex-col items-center gap-1 w-1/8">
-                              <div 
-                                className="w-6 rounded-t-md bg-gradient-to-t from-purple-500 to-indigo-500"
-                                style={{ height: `${Math.min(100, height)}%` }}
-                              ></div>
-                              <span className="text-xs text-gray-500 mt-1">
-                                {new Date(day.date).toLocaleDateString(undefined, { day: 'numeric' })}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-4 w-full max-w-md">
-                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                          <div className="text-sm text-gray-500 mb-1">Robot Messages</div>
-                          <div className="text-lg font-bold text-indigo-600">
-                            {chartData.dailyStats.reduce((sum, day) => sum + day.robotMessages, 0)}
-                          </div>
-                        </div>
-                        
-                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                          <div className="text-sm text-gray-500 mb-1">Template Messages</div>
-                          <div className="text-lg font-bold text-purple-600">
-                            {chartData.dailyStats.reduce((sum, day) => sum + day.templateMessages, 0)}
-                          </div>
-                        </div>
-                        
-                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                          <div className="text-sm text-gray-500 mb-1">Carousel Messages</div>
-                          <div className="text-lg font-bold text-green-600">
-                            {chartData.dailyStats.reduce((sum, day) => sum + day.carouselMessages, 0)}
-                          </div>
-                        </div>
-                        
-                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                          <div className="text-sm text-gray-500 mb-1">Comment Replies</div>
-                          <div className="text-lg font-bold text-pink-600">
-                            {chartData.dailyStats.reduce((sum, day) => sum + day.commentReplies, 0)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center gap-4 w-full h-full">
-                      <div className="bg-gray-100 p-6 rounded-full">
-                        <BarChart4 className="w-12 h-12 text-gray-400" />
-                      </div>
-                      <div className="text-base text-gray-500 text-center">
-                        No trend data available for the selected timeframe
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </>
         )}
       </div>
     </div>
-  )
+  );
 }

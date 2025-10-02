@@ -32,7 +32,7 @@ const Header = () => {
       const tenentId = localStorage.getItem('tenentid');
       try {
         const response = await axios.get(
-          'https://app.instaxbot.com/api/usernameroute/username',
+          'https://ddcf6bc6761a.ngrok-free.app/api/usernameroute/username',
           { params: { tenentId } }
         );
 
@@ -48,7 +48,7 @@ const Header = () => {
       }
       try {
         const response1 = await axios.get(
-          'https://app.instaxbot.com/api/mainmoderoute/mainmode',
+          'https://ddcf6bc6761a.ngrok-free.app/api/mainmoderoute/mainmode',
           { params: { tenentId } }
         );
 

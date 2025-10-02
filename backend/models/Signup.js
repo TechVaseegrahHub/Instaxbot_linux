@@ -8,6 +8,7 @@ const signupSchema = new mongoose.Schema({
     tenentId: { type: String, required: true},
     isAdmin: { type: Boolean, default: false },
     blocked: { type: Boolean, default: false },
+    type:{ type: String}
     
   }, { timestamps: true });
   const Signup = mongoose.model('Signup', signupSchema);

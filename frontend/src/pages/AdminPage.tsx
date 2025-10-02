@@ -28,7 +28,7 @@ export default function AdminPage() {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('https://app.instaxbot.com/api/auth/users', {
+      const response = await axios.get('https://ddcf6bc6761a.ngrok-free.app/api/auth/users', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -49,7 +49,7 @@ export default function AdminPage() {
       setLoading(true);
   
       const response = await axios.put(
-        `https://app.instaxbot.com/api/auth/users/${userId}/block`,
+        `https://ddcf6bc6761a.ngrok-free.app/api/auth/users/${userId}/block`,
         {
           currentStatus: currentStatus,
           tenentId: tenentId

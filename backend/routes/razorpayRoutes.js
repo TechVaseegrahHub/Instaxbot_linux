@@ -7,6 +7,7 @@ const Cart = require('../models/Cart');
 const Signup = require('../models/Signup'); // ✅ Added missing import
 const crypto = require('crypto');
 const axios = require('axios');
+const mongoose = require('mongoose');
 const router = express.Router();
 const LongToken = require('../models/LongToken');
 const BASE_URL = 'https://app.instaxbot.com';
@@ -22,7 +23,7 @@ const SMS_CONFIG = {
 
 // Enhanced Instagram message sending with better error handling
 async function sendInstagramMessage(igId, userAccessToken, recipientId, messageText1) {
-  const url = `https://graph.instagram.com/v21.0/${igId}/messages`; // ✅ Fixed typo: igIdd -> igId
+  const url = `https://graph.instagram.com/v23.0/${igId}/messages`; // ✅ Fixed typo: igIdd -> igId
   const messageTextWithEmoji = " 🤖:" + messageText1;
   const data = {
     recipient: { id: recipientId },
@@ -37,17 +38,17 @@ async function sendInstagramMessage(igId, userAccessToken, recipientId, messageT
       },
       timeout: 10000 // 10 second timeout
     });
-    
+
     console.log('Instagram message sent successfully', response.data);
     return { success: true, message: messageTextWithEmoji };
-    
+
   } catch (error) {
     console.error('Instagram message sending failed:', {
       error: error.response?.data || error.message,
       status: error.response?.status,
       recipientId: recipientId
     });
-    
+
     throw new Error(`Instagram message failed: ${error.response?.data?.error?.message || error.message}`);
   }
 }
@@ -55,14 +56,14 @@ async function sendInstagramMessage(igId, userAccessToken, recipientId, messageT
 // ✅ Improved address splitting function
 function splitAddressIntoThreeParts(address) {
   if (!address || typeof address !== 'string') return ['', '', ''];
-  
+
   const maxLength = 40; // Max length per part for SMS
   const trimmedAddress = address.trim();
-  
+
   if (trimmedAddress.length <= maxLength) {
     return [trimmedAddress, '', ''];
   }
-  
+
   if (trimmedAddress.length <= maxLength * 2) {
     const midPoint = Math.ceil(trimmedAddress.length / 2);
     return [
@@ -71,7 +72,7 @@ function splitAddressIntoThreeParts(address) {
       ''
     ];
   }
-  
+
   // Split into 3 parts
   const thirdLength = Math.ceil(trimmedAddress.length / 3);
   return [
@@ -89,14 +90,14 @@ function formatAddressForSMS(order) {
     order.city,
     order.state
   ].filter(part => part && part.toString().trim().length > 0);
-  
+
   return addressParts.join(', ');
 }
 
 // ✅ Enhanced product formatting function
 function formatProductsForSMS(products) {
   console.log('formatProductsForSMS input:', products);
-  
+
   if (!products || products.length === 0) {
     return { part1: 'Your items', part2: '' };
   }
@@ -107,40 +108,40 @@ function formatProductsForSMS(products) {
       const qty = product.quantity || 1;
       return `${name} (x${qty})`;
     });
-    
+
     const allProducts = productNames.join(', ');
     console.log('All products combined:', allProducts);
 
     // Split products into 2 parts if too long
     const maxLength = 80; // Adjust based on SMS character limits
-    
+
     if (allProducts.length <= maxLength) {
       return { part1: allProducts, part2: '' };
     }
-    
+
     // Find a good split point (preferably at a comma)
     const halfLength = Math.ceil(allProducts.length / 2);
     let splitIndex = halfLength;
-    
+
     // Try to find a comma near the middle
     const nearbyComma = allProducts.lastIndexOf(', ', halfLength + 20);
     if (nearbyComma > halfLength - 20 && nearbyComma > 0) {
       splitIndex = nearbyComma + 2; // +2 to skip the comma and space
     }
-    
+
     const part1 = allProducts.substring(0, splitIndex).trim();
     const part2 = allProducts.substring(splitIndex).trim();
-    
+
     console.log('Products split - Part 1:', part1);
     console.log('Products split - Part 2:', part2);
-    
+
     return { part1, part2 };
   }
 
   if (typeof products === 'string') {
     return { part1: products, part2: '' };
   }
-  
+
   return { part1: 'Your items', part2: '' };
 }
 
@@ -188,7 +189,7 @@ async function sendSMSFallback(phone, orderDetails, order) {
     const smsVariables = {
       var1: orderDetails.companyName || 'Store',  // Company name
       var2: productsData.part1,                   // Items part 1
-      var3: productsData.part2,                   // Items part 2  
+      var3: productsData.part2,                   // Items part 2
       var4: totalAmount,                          // Total amount
       var5: addressPart1 || '',                   // Address part 1
       var6: addressPart2 || '',                   // Address part 2
@@ -287,7 +288,8 @@ async function sendOrderConfirmation(order) {
       .limit(1);
 
     if (latestToken && latestToken.userAccessToken && latestToken.Instagramid) {
-      const messageText = `✅ Order & Payment Confirmation ✅\n\nThank you for your purchase!\n\n*Order ID:* ${orderDetails.orderId}\n*Amount Paid:* ₹${orderDetails.total}\n*Order Status:* Confirmed\n*Payment Status:* Completed\n\nYour order has been received and payment has been successfully processed. We're preparing your items for shipment.\n\nYou can track your order status using the Order ID above.`;
+      const messageText = `✅ Order & Payment Confirmation ✅\n\nThank you for your purchase!\n\nOrder ID: ${orderDetails.orderId}\nAmount Paid: ₹${orderDetails.total}\nOrder Status: Confirmed\nPayment Status: Completed\n\nYour order has been received and payment has been successfully processed.\n\nYou will receive updates about your order via Instagram DM or SMS.\n\nYou can track your order status using the Order ID above by typing your Order ID ending with $ in the Instagram DM (e.g., 78910$).`;
+
 
       await sendInstagramMessage(
         latestToken.Instagramid,
@@ -356,17 +358,17 @@ async function sendOrderConfirmation(order) {
 router.post('/authorize', async (req, res) => {
   try {
     console.log("triggered");
-    
+
     // Get tenant ID from request body or header
     const tenentId = req.body.tenentId || req.headers['x-tenant-id'];
-    
+
     if (!tenentId) {
       return res.status(401).json({ error: 'Unauthorized - No tenant ID provided' });
     }
 
-    // Generate unique state for OAuth 
+    // Generate unique state for OAuth
     const state = crypto.randomUUID();
-    
+
     // Create or update Razorpay document with state
     await Razorpay.findOneAndUpdate(
       { tenentId: tenentId },
@@ -385,15 +387,15 @@ router.post('/authorize', async (req, res) => {
     authUrl.searchParams.append('response_type', 'code');
     authUrl.searchParams.append('scope', 'read_write');
     authUrl.searchParams.append('state', state);
-    
+
     console.log(authUrl, "url");
 
     return res.status(200).json({ authUrl: authUrl.toString() });
   } catch (error) {
     console.error('Error initiating Razorpay authorization:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Server error initiating Razorpay authorization',
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -401,7 +403,7 @@ router.post('/authorize', async (req, res) => {
 router.get('/callback', async (req, res) => {
   try {
     console.log("trigg the callback");
-    
+
     // Get state and code from query parameters
     const state = req.query.state;
     const code = req.query.code;
@@ -444,7 +446,7 @@ router.get('/callback', async (req, res) => {
       if (tokenData.access_token && tokenData.razorpay_account_id) {
         try {
           console.log("Fetching Razorpay keys for account:", tokenData.razorpay_account_id);
-          
+
           // Store this key_id in your database
           await Razorpay.findByIdAndUpdate(razorpayRecord._id, {
             razorpayAccessToken: tokenData.access_token || null,
@@ -455,10 +457,10 @@ router.get('/callback', async (req, res) => {
             razorpayState: null,
             razorpayStateExpiresAt: null
           });
-          
+
         } catch (keyError) {
           console.error('Could not fetch Razorpay keys:', keyError);
-          
+
           // Continue without the key_id, store other information
           await Razorpay.findByIdAndUpdate(razorpayRecord._id, {
             razorpayAccessToken: tokenData.access_token || null,
@@ -471,7 +473,7 @@ router.get('/callback', async (req, res) => {
         }
       } else {
         console.warn("Missing access_token or account_id in token response");
-        
+
         // Store whatever information we have
         await Razorpay.findByIdAndUpdate(razorpayRecord._id, {
           razorpayAccessToken: tokenData.access_token || null,
@@ -492,13 +494,13 @@ router.get('/callback', async (req, res) => {
               'Authorization': `Bearer ${tokenData.access_token}`
             }
           });
-          
+
           const webhooksData = await webhooksResponse.json();
-          
+
           // If webhooks exist, store the secret of the first active one
           if (webhooksData.items && webhooksData.items.length > 0) {
             const activeWebhook = webhooksData.items.find(webhook => webhook.active === true);
-            
+
             if (activeWebhook && activeWebhook.secret) {
               await Razorpay.findByIdAndUpdate(razorpayRecord._id, {
                 razorpayWebhookSecret: activeWebhook.secret
@@ -528,20 +530,20 @@ router.get('/check-connection', async (req, res) => {
   try {
     // Get tenant ID from request header or query parameter
     const tenentId = req.headers['x-tenant-id'] || req.query.tenentId;
-    
+
     if (!tenentId) {
       return res.status(401).json({ error: 'Unauthorized - No tenant ID provided' });
     }
- 
+
     // Find the Razorpay record for this tenant
     const razorpayRecord = await Razorpay.findOne(
       { tenentId: tenentId }
     );
     console.log("razorpayRecord", razorpayRecord);
-    
+
     const isConnected = !!razorpayRecord?.razorpayAccessToken;
     console.log("isConnected", isConnected);
-    
+
     // Return more detailed connection data for the frontend
     return res.status(200).json({
       isConnected: isConnected,
@@ -560,14 +562,14 @@ router.post('/disconnect', async (req, res) => {
   try {
     // Get tenant ID from request body or header
     const tenentId = req.body.tenentId || req.headers['x-tenant-id'];
-    
+
     if (!tenentId) {
       return res.status(401).json({ error: 'Unauthorized - No tenant ID provided' });
     }
 
     // Find the Razorpay record for this tenant
     const razorpayRecord = await Razorpay.findOne({ tenentId: tenentId });
-    
+
     if (!razorpayRecord) {
       return res.status(404).json({ error: 'No Razorpay connection found for this tenant' });
     }
@@ -582,15 +584,15 @@ router.post('/disconnect', async (req, res) => {
       razorpayWebhookSecret: null,
     });
 
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Razorpay connection successfully removed' 
+    return res.status(200).json({
+      success: true,
+      message: 'Razorpay connection successfully removed'
     });
   } catch (error) {
     console.error('Error disconnecting from Razorpay:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Server error disconnecting from Razorpay',
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -620,63 +622,118 @@ router.post('/webhook', async (req, res) => {
 
     switch (webhookData.event) {
       case 'payment_link.paid': {
-        const billNo = webhookData.payload.payment_link?.entity.notes.bill_no;
-        if (!billNo) {
-          throw new Error('Invalid bill number in payment link notes');
+  const billNo = webhookData.payload.payment_link?.entity.notes.bill_no;
+  if (!billNo) {
+    throw new Error('Invalid bill number in payment link notes');
+  }
+
+  const amount = webhookData.payload.payment_link.entity.amount / 100;
+  const paymentId = webhookData.payload.payment?.entity.id;
+
+  // Start database transaction for atomic operations
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Update order in database
+    const order = await Order.findOneAndUpdate(
+      { bill_no: billNo },
+      {
+        amount: amount,
+        paymentStatus: 'PAID',
+        paymentMethod: 'razorpay_link',
+        razorpayPaymentId: paymentId,
+        status: 'PROCESSING'
+      },
+      { new: true, session }
+    );
+
+    if (!order) {
+      throw new Error(`Order with bill_no ${billNo} not found`);
+    }
+
+    // Update unit-specific inventory (Fixed from product-level to unit-level)
+    console.log('Reducing unit-specific stock for order products...');
+
+    for (const product of order.products) {
+      // Find product that contains this unit SKU
+      let productDetail = await ProductDetail.findOne({
+        tenentId: order.tenentId,
+        'units.sku': product.sku
+      }).session(session);
+
+      let unitData = null;
+
+      if (productDetail) {
+        // Found by unit SKU - extract the specific unit data
+        unitData = productDetail.units.find(unit => unit.sku === product.sku);
+      } else {
+        // Fallback: try to find by product-level SKU
+        productDetail = await ProductDetail.findOne({
+          tenentId: order.tenentId,
+          sku: product.sku
+        }).session(session);
+
+        if (productDetail) {
+          // Find the unit by selectedUnit name
+          unitData = productDetail.units.find(unit => unit.unit === product.selectedUnit);
         }
-
-        const amount = webhookData.payload.payment_link.entity.amount / 100;
-        const paymentId = webhookData.payload.payment?.entity.id;
-
-        // Update order in database
-        const order = await Order.findOneAndUpdate(
-          { bill_no: billNo },
-          {
-            amount: amount,
-            paymentStatus: 'PAID',
-            paymentMethod: 'razorpay_link',
-            razorpayPaymentId: paymentId,
-            status: 'PROCESSING'
-          },
-          { new: true }
-        );
-        
-        if (!order) {
-          throw new Error(`Order with bill_no ${billNo} not found`);
-        }
-
-        // Update inventory
-        for (const product of order.products) {
-          const productDetail = await ProductDetail.findOne({ 
-            tenentId: order.tenentId, 
-            sku: product.sku
-          });
-          
-          if (productDetail) {
-            const newQuantity = Math.max(0, productDetail.quantityInStock - product.quantity);
-            await ProductDetail.updateOne(
-              { tenentId: order.tenentId, sku: product.sku },
-              { $set: { quantityInStock: newQuantity } }
-            );
-            console.log(`Updated stock for product ${product.sku}, from ${productDetail.quantityInStock} to ${newQuantity}`);
-          } else {
-            console.warn(`Product ${product.sku} not found`);
-          }
-        }
-
-        // Clear cart
-        await Cart.findOneAndUpdate(
-          { senderId: order.senderId, tenentId: order.tenentId },
-          { $set: { items: [] } }
-        );
-
-        // ✅ Send notification with enhanced SMS fallback
-        const notificationResult = await sendOrderConfirmation(order);
-        console.log('Notification result:', notificationResult);
-        
-        console.log('Successfully processed payment, updated inventory, and sent notification');
-        break;
       }
+
+      if (!productDetail) {
+        console.warn(`Product not found for SKU: ${product.sku}`);
+        continue;
+      }
+
+      if (!unitData) {
+        console.warn(`Unit not found for SKU: ${product.sku}, Unit: ${product.selectedUnit}`);
+        continue;
+      }
+
+      // Check if we have enough stock before reducing
+      const availableStock = unitData.quantityInStock || 0;
+      if (product.quantity > availableStock) {
+        throw new Error(`Insufficient stock for ${product.product_name} (${product.selectedUnit}). Available: ${availableStock}, Requested: ${product.quantity}`);
+      }
+
+      // Find the unit in the product and reduce its stock
+      const unitIndex = productDetail.units.findIndex(unit => unit.sku === product.sku);
+      if (unitIndex !== -1) {
+        const originalStock = productDetail.units[unitIndex].quantityInStock;
+        productDetail.units[unitIndex].quantityInStock -= product.quantity;
+
+        await productDetail.save({ session });
+
+        console.log(`Updated unit stock for ${product.product_name} (${product.selectedUnit}), SKU: ${product.sku}, from ${originalStock} to ${productDetail.units[unitIndex].quantityInStock}`);
+      }
+    }
+
+    // Clear cart
+    await Cart.findOneAndUpdate(
+      { senderId: order.senderId, tenentId: order.tenentId },
+      { $set: { items: [] } },
+      { session }
+    );
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // Send notification after successful database operations
+    const notificationResult = await sendOrderConfirmation(order);
+    console.log('Notification result:', notificationResult);
+
+    console.log('Successfully processed payment, updated unit-specific inventory, and sent notification');
+    break;
+
+  } catch (error) {
+    // Abort transaction on error
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Error processing payment webhook:', error);
+    throw error;
+  }
+}
 
       case 'payment.authorized':
       case 'payment.captured': {
@@ -699,7 +756,7 @@ router.post('/webhook', async (req, res) => {
           },
           { new: true }
         );
-        
+
         if (!order) {
           throw new Error(`Order with bill_no ${billNo} not found`);
         }
@@ -752,7 +809,7 @@ router.post('/webhook', async (req, res) => {
       }
     }
 
-    return res.status(200).json({ 
+    return res.status(200).json({
       status: 'success',
       event: webhookData.event,
       processedAt: new Date().toISOString()
@@ -760,8 +817,8 @@ router.post('/webhook', async (req, res) => {
 
   } catch (error) {
     console.error('Webhook processing error:', error);
-    return res.status(500).json({ 
-      error: 'Webhook processing failed', 
+    return res.status(500).json({
+      error: 'Webhook processing failed',
       message: error.message || 'Unknown error',
       timestamp: new Date().toISOString()
     });

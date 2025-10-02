@@ -53,7 +53,7 @@ const ProductTypeTemplate = () => {
     try {
       const tenentId = localStorage.getItem('tenentid');
       
-      const response = await axios.post(`https://app.instaxbot.com/api/templatesroute/product-type`, {
+      const response = await axios.post(`https://ddcf6bc6761a.ngrok-free.app/api/templatesroute/product-type`, {
         tenentId,
         productTypes
       });

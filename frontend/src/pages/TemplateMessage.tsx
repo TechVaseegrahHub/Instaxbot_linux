@@ -2,7 +2,7 @@ import { useState, FormEvent } from 'react';
 import { Plus, Minus, Save } from 'lucide-react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-
+import { Link } from "react-router-dom"; // Import Link from react-router-dom
 
 interface ButtonOption {
   buttonText: string;
@@ -206,7 +206,7 @@ const TemplateMessage: React.FC<TemplateMessageProps> = ({
     try {
       const tenentId = localStorage.getItem('tenentid');
       const response = await axios.post(
-        'https://app.instaxbot.com/api/templatemessageroute/message-templates',
+        'https://ddcf6bc6761a.ngrok-free.app/api/templatemessageroute/message-templates',
         {
           tenentId,
           templates
@@ -273,7 +273,7 @@ const TemplateMessage: React.FC<TemplateMessageProps> = ({
     try {
       const tenentId = localStorage.getItem('tenentid');
       const response = await axios.post(
-        'https://app.instaxbot.com/api/templatemessageroute/message-templates/update',
+        'https://ddcf6bc6761a.ngrok-free.app/api/templatemessageroute/message-templates/update',
         {
           tenentId,
           templates
@@ -297,9 +297,15 @@ const TemplateMessage: React.FC<TemplateMessageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-8 px-4">
-      
-      <div className="w-full max-w-4xl">
+    <div className="min-h-screen bg-gray-100 py-8 px-4 w-full">
+      {/* Back Button is now here, matching the previous file's structure */}
+      <Link
+        to="/setting" // You can change this to the appropriate back path
+        className="inline-block mb-6 ml-4 px-4 py-2 bg-white text-black-600 rounded-md font-medium hover:bg-pink-50 shadow-sm transition-all duration-300 border border-pink-200"
+      >
+        ← Back
+      </Link>
+      <div className="w-full max-w-4xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white rounded-lg shadow-md p-6 border border-pink-100">
             <div className="flex justify-between items-center border-b border-pink-100 pb-4 mb-4">

@@ -21,7 +21,7 @@ export default function LoginPage(): JSX.Element {
     e.preventDefault();
 
     try {
-      const response = await axios.post('https://app.instaxbot.com/api/auth/login', {
+      const response = await axios.post('https://ddcf6bc6761a.ngrok-free.app/api/auth/login', {
         email,
         password,
       });
@@ -32,6 +32,7 @@ export default function LoginPage(): JSX.Element {
         const wstoken = response.data.wstoken;
         const isAdmin = response.data.isAdmin;
         const blocked = response.data.blocked;
+        const type = response.data.type;
         console.log('Logged in successfully. Tenant ID:', tenentId, token);
         
         localStorage.setItem('tenentid', tenentId);
@@ -39,6 +40,7 @@ export default function LoginPage(): JSX.Element {
         localStorage.setItem('wstoken', wstoken);
         localStorage.setItem('isAdmin', isAdmin);
         localStorage.setItem('blocked', blocked);
+        localStorage.setItem('type', type);
         console.log('blocked:', blocked);
         
         if (isAdmin) {

@@ -13,6 +13,7 @@ export default function SignupPage(): JSX.Element {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [name, setName] = useState<string>('');
+  const [verificationCode, setVerificationCode] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [wordIndex] = useState<number>(0);
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -23,10 +24,11 @@ export default function SignupPage(): JSX.Element {
     e.preventDefault();
 
     try {
-      const response = await axios.post('https://app.instaxbot.com/api/auth/signup', {
+      const response = await axios.post('https://ddcf6bc6761a.ngrok-free.app/api/auth/signup', {
         name,
         email,
-        password
+        password,
+        verificationCode
       });
 
       if (response.status === 201) {
@@ -90,6 +92,18 @@ export default function SignupPage(): JSX.Element {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="border-gray-200 bg-gray-50 h-9"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="code-mobile" className="text-gray-700 text-sm">Verification Code</Label>
+                <Input
+                  id="code-mobile"
+                  type="text"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  placeholder="Enter verification code"
                   className="border-gray-200 bg-gray-50 h-9"
                 />
               </div>
@@ -182,6 +196,7 @@ export default function SignupPage(): JSX.Element {
                   className="border-gray-300"
                 />
               </div>
+              
               <div>
                 <Label htmlFor="email" className="text-gray-700">Email</Label>
                 <Input
@@ -192,6 +207,19 @@ export default function SignupPage(): JSX.Element {
                   className="border-gray-300"
                 />
               </div>
+
+              <div>
+                <Label htmlFor="code" className="text-gray-700">Verification Code</Label>
+                <Input
+                  id="code"
+                  type="text"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  placeholder="Enter verification code"
+                  className="border-gray-300"
+                />
+              </div>
+              
               <div>
                 <Label htmlFor="password" className="text-gray-700">Password</Label>
                 <div className="relative">
@@ -211,9 +239,17 @@ export default function SignupPage(): JSX.Element {
                   </button>
                 </div>
               </div>
+              
               {error && <p className="text-red-500">{error}</p>}
-              <Button type="submit" className="w-full bg-purple-600 text-white">Create account</Button>
+              
+              <Button 
+                type="submit" 
+                className="w-full bg-purple-600 text-white"
+              >
+                Create account
+              </Button>
             </form>
+            
             <div className="text-center mt-6">
               <span className="text-gray-600">Already have an account? </span>
               <button className="text-purple-600 hover:underline" onClick={() => navigate('/login')}>
@@ -221,6 +257,7 @@ export default function SignupPage(): JSX.Element {
               </button>
             </div>
           </div>
+          
           <div className="flex justify-center space-x-4 text-sm mt-6 sm:mt-0">
             <button onClick={handleTermsClick} className="text-gray-500 hover:text-purple-600 hover:underline">
               Terms & Conditions
@@ -262,3 +299,4 @@ export default function SignupPage(): JSX.Element {
     </>
   );
 }
+

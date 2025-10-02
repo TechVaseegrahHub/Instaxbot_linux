@@ -46,7 +46,7 @@ const session = require('express-session');
 // Load your API key from an environment variable or secret management service
 // (Don't hard-code your API key in your source code!)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const appUrl = process.env.APP_URL || 'https://app.instaxbot.com';
+const appUrl = process.env.APP_URL || 'https://ddcf6bc6761a.ngrok-free.app';
 console.log('App URL:', appUrl);
 // Create an instance of the OpenAI class
 const openai = new OpenAI({
@@ -79,7 +79,8 @@ var express = require("express"),
   app.use(bodyParser.json()); // Add this line to parse JSON data
   app.use(bodyParser.urlencoded({ extended: true }));
   app.use(cors({
-    origin: '*' // Replace with your client URL
+    origin: 'https://ddcf6bc6761a.ngrok-free.app', // Replace with your client URL
+     credentials: true,
 }));
 /*
 app.use(session({
@@ -115,7 +116,7 @@ app.use((req, res, next) => {
   
   connectDB();
 
-  //app.use(express.static(path.join(__dirname, '..', 'Frontend', 'dist')));
+  //app.use(express.static(path.join(__dirname, '..', 'frontend', 'dist')));
   
   //app.use('/', routes);
   app.use('/api', routes);
@@ -166,11 +167,11 @@ app.use((req, res, next) => {
 
   app.use('/uploads', express.static('uploads'));
   app.use('/images', express.static(path.join(__dirname, 'images')));
-  app.use(express.static(path.join(__dirname, '..', 'Frontend', 'dist')));
+  app.use(express.static(path.join(__dirname, '..', 'frontend', 'dist')));
   
   
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'Frontend', 'dist', 'index.html'));
+    res.sendFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'));
   });
   
   app.use((err, req, res, next) => {

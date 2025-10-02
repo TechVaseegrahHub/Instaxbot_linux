@@ -1,6 +1,6 @@
-import { useState, FormEvent, useEffect } from 'react';
-import { Plus, Minus, Save, Link as LinkIcon, Image, ArrowLeft } from 'lucide-react';
-import axios from 'axios';
+import { useState, FormEvent } from 'react';
+import { Plus, Minus, Save, Link as LinkIcon, Image,ArrowLeft } from 'lucide-react';
+import axios, { AxiosError } from 'axios';
 import Swal from 'sweetalert2';
 import { Link } from "react-router-dom";
 
@@ -16,9 +16,10 @@ interface ProductDetailsTemplateProps {
 
 interface ProductDetail {
   productName: string;
+  productDescription: string;
   units: ProductUnit[];
   websiteLink: string;
-  sku?: string;  // Changed from productId to sku
+  sku?: string;
   productPhoto: File | null;
   productPhotoUrl?: string;
   productPhotoPreview: string;
@@ -31,37 +32,20 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
   const [products, setProducts] = useState<ProductDetail[]>([
     initialData || {
       productName: '',
-      sku: '',  // Changed from productId to sku
+      productDescription: '',
+      sku: '',
       units: [{ unit: '', price: '' }],
       websiteLink: '',
       productPhoto: null,
       productPhotoPreview: ''
     }
   ]);
-  
-  // Add state to detect mobile view
-  const [isMobileView, setIsMobileView] = useState(false);
-  
-  // Add effect to detect mobile screen size
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobileView(window.innerWidth < 768);
-    };
-    
-    // Set initial value
-    handleResize();
-    
-    // Add event listener
-    window.addEventListener('resize', handleResize);
-    
-    // Cleanup
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   const addProduct = () => {
     setProducts([...products, {
       productName: '',
-      sku: '',  // Changed from productId to sku
+      productDescription: '',
+      sku: '',
       units: [{ unit: '', price: '' }],
       websiteLink: '',
       productPhoto: null,
@@ -130,42 +114,89 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
   const prepareFormData = () => {
     const formData = new FormData();
     const tenentId = localStorage.getItem('tenentid');
+    
+    console.log('🏢 Tenant ID:', tenentId);
     formData.append('tenentId', tenentId || '');
 
     // Convert products array to string to preserve structure
     const productsData = products.map(product => ({
       productName: product.productName,
-      ...(product.sku && { sku: product.sku }), // Use sku directly now
+      productDescription: product.productDescription,
+      ...(product.sku && { sku: product.sku }),
       websiteLink: product.websiteLink,
       units: product.units,
       productPhotoUrl: product.isExternalImage ? product.productPhotoUrl : undefined
     }));
 
+    console.log('📦 Products Data (JSON):', productsData);
+    console.log('📦 Products Data (Stringified):', JSON.stringify(productsData));
+    
     formData.append('products', JSON.stringify(productsData));
 
     // Append files separately
     products.forEach((product, index) => {
       if (!product.isExternalImage && product.productPhoto) {
+        console.log(`📸 File for Product ${index}:`, {
+          name: product.productPhoto.name,
+          size: product.productPhoto.size,
+          type: product.productPhoto.type,
+          lastModified: product.productPhoto.lastModified
+        });
         formData.append(`products[${index}][productPhoto]`, product.productPhoto);
       }
     });
+
+    // Log all FormData entries
+    console.log('📋 FormData entries:');
+    for (let [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`  ${key}:`, {
+          fileName: value.name,
+          fileSize: value.size,
+          fileType: value.type
+        });
+      } else {
+        console.log(`  ${key}:`, value);
+      }
+    }
 
     return formData;
   };
 
   const validateProducts = () => {
-    return products.some(product =>
+    const hasEmptyFields = products.some(product =>
       !product.productName.trim() ||
       !product.websiteLink.trim() ||
       (!product.productPhoto && !product.productPhotoUrl) ||
       product.units.some(unit => !unit.unit.trim() || !unit.price.trim())
     );
+    
+    console.log('✅ Validation Result:', hasEmptyFields ? 'FAILED' : 'PASSED');
+    
+    if (hasEmptyFields) {
+      console.log('❌ Validation Details:');
+      products.forEach((product, index) => {
+        console.log(`  Product ${index + 1}:`);
+        console.log(`    - Product Name: ${product.productName.trim() ? '✓' : '✗ (empty)'}`);
+        console.log(`    - Website Link: ${product.websiteLink.trim() ? '✓' : '✗ (empty)'}`);
+        console.log(`    - Photo: ${(product.productPhoto || product.productPhotoUrl) ? '✓' : '✗ (missing)'}`);
+        product.units.forEach((unit, unitIndex) => {
+          console.log(`    - Unit ${unitIndex + 1}: ${unit.unit.trim() && unit.price.trim() ? '✓' : '✗ (empty)'}`);
+        });
+      });
+    }
+    
+    return hasEmptyFields;
   };
 
   const handleUpdate = async () => {
+    console.log('🔄 UPDATE OPERATION STARTED');
+    console.log('📊 Current Products State:', products);
+    
     try {
       // Validate required fields
       if (validateProducts()) {
+        console.log('❌ Validation failed - stopping update');
         Swal.fire({
           icon: "error",
           title: "Empty Fields",
@@ -175,8 +206,12 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
       }
 
       const formData = prepareFormData();
+      
+      console.log('🚀 Sending UPDATE request to backend...');
+      console.log('🎯 API Endpoint:', 'https://ddcf6bc6761a.ngrok-free.app/api/templatesroute/product-details/update');
+      
       const response = await axios.post(
-        'https://app.instaxbot.com/api/templatesroute/product-details/update',
+        'https://ddcf6bc6761a.ngrok-free.app/api/templatesroute/product-details/update',
         formData,
         {
           headers: {
@@ -185,7 +220,12 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
         }
       );
 
+      console.log('✅ UPDATE Response:', response.data);
+      console.log('📈 Response Status:', response.status);
+      console.log('📋 Response Headers:', response.headers);
+
       if (response.data) {
+        console.log('🎉 Update successful!');
         Swal.fire({
           icon: "success",
           title: "Success",
@@ -195,7 +235,8 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
         // Reset the form after successful update
         setProducts([{
           productName: '',
-          sku: '',  // Changed from productId to sku
+          productDescription: '',
+          sku: '',
           units: [{ unit: '', price: '' }],
           websiteLink: '',
           productPhoto: null,
@@ -203,8 +244,22 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
           productPhotoUrl: '',
           isExternalImage: false
         }]);
+        console.log('🔄 Form reset after successful update');
       }
     } catch (error) {
+      console.error('❌ UPDATE ERROR:', error);
+      
+      if (error instanceof AxiosError) {
+        console.error('📋 Error Details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          headers: error.response?.headers
+        });
+      } else {
+        console.error('📋 Unknown Error:', error);
+      }
+      
       Swal.fire({
         icon: "error",
         title: "Update Failed",
@@ -215,8 +270,12 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    console.log('💾 SAVE OPERATION STARTED');
+    console.log('📊 Current Products State:', products);
 
     if (validateProducts()) {
+      console.log('❌ Validation failed - stopping save');
       Swal.fire({
         icon: "error",
         title: "Empty Fields",
@@ -227,8 +286,12 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
 
     try {
       const formData = prepareFormData();
+      
+      console.log('🚀 Sending SAVE request to backend...');
+      console.log('🎯 API Endpoint:', 'https://ddcf6bc6761a.ngrok-free.app/api/templatesroute/product-details');
+      
       const response = await axios.post(
-        'https://app.instaxbot.com/api/templatesroute/product-details', 
+        'https://ddcf6bc6761a.ngrok-free.app/api/templatesroute/product-details', 
         formData, 
         {
           headers: {
@@ -237,15 +300,22 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
         }
       );
 
+      console.log('✅ SAVE Response:', response.data);
+      console.log('📈 Response Status:', response.status);
+      console.log('📋 Response Headers:', response.headers);
+
       if (response.data) {
+        console.log('🎉 Save successful!');
         Swal.fire({
           icon: "success",
           title: "Success",
           text: "Product details saved successfully!",
         });
+        
         setProducts([{
           productName: '',
-          sku: '',  // Changed from productId to sku
+          productDescription: '',
+          sku: '',
           units: [{ unit: '', price: '' }],
           websiteLink: '',
           productPhoto: null,
@@ -253,8 +323,22 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
           productPhotoUrl: '',
           isExternalImage: false
         }]);
+        console.log('🔄 Form reset after successful save');
       }
     } catch (error) {
+      console.error('❌ SAVE ERROR:', error);
+      
+      if (error instanceof AxiosError) {
+        console.error('📋 Error Details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          headers: error.response?.headers
+        });
+      } else {
+        console.error('📋 Unknown Error:', error);
+      }
+      
       Swal.fire({
         icon: "error",
         title: "Save Failed",
@@ -264,117 +348,112 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-start py-2 px-3">
-      <div className={`w-full ${isMobileView ? 'max-w-sm' : 'max-w-4xl'}`}>
-        {isMobileView && (
-          <div className="mb-2 w-full flex justify-start">
-            <Link
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-8 px-4 w-full">
+      <Link
               to="/tech-product-template"
               className="absolute top-24 left-4 md:top-20 md:left-[17rem] px-3 py-1.5 md:px-4 md:py-2 bg-white text-pink-600 rounded-md font-medium hover:bg-pink-50 shadow-sm transition-all duration-300 flex items-center gap-1 md:gap-2 border border-pink-200 text-sm md:text-base"
             >
               <ArrowLeft size={14} /> Back
             </Link>
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
-         <div className="bg-white mt-24 rounded-lg shadow-md p-3 sm:p-6 border border-pink-100">
-            <div className="flex justify-between items-center border-b border-pink-100 pb-2 mb-3">
-              <h2 className="text-lg sm:text-2xl font-bold text-gray-800">Product Details</h2>
-              {isMobileView ? (
-                <button
-                  type="button"
-                  onClick={addProduct}
-                  className="flex items-center justify-center w-7 h-7 bg-pink-600 text-white rounded-full shadow-md hover:bg-pink-700 transition-all duration-300"
-                >
-                  <Plus size={16} />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={addProduct}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-pink-600 text-white rounded-md text-base shadow-md hover:bg-pink-700 transition-all duration-300"
-                >
-                  <Plus size={16} />
-                  Add Product
-                </button>
-              )}
+      <div className="w-full max-w-4xl mt-20 md:mt-0">
+        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+          <div className="bg-white rounded-lg shadow-md p-4 md:p-6 border border-pink-100">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center border-b border-pink-100 pb-4 mb-4 gap-3">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800">Product Details</h2>
+              <button
+                type="button"
+                onClick={addProduct}
+                className="flex items-center justify-center gap-1 md:gap-2 px-3 py-1.5 bg-pink-600 text-white rounded-md text-sm md:text-base shadow-md hover:bg-pink-700 transition-all duration-300 w-full md:w-auto"
+              >
+                <Plus size={16} />
+                Add Product
+              </button>
             </div>
 
             {products.map((product, productIndex) => (
-              <div key={productIndex} className="space-y-3 sm:space-y-5 p-3 sm:p-5 bg-white border border-pink-100 rounded-lg shadow-sm mb-3 sm:mb-6">
+              <div key={productIndex} className="space-y-4 p-3 md:p-5 bg-white border border-pink-100 rounded-lg shadow-sm mb-4 md:mb-6">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-base sm:text-xl font-semibold text-gray-800e">Product {productIndex + 1}</h3>
+                  <h3 className="text-lg md:text-xl font-semibold text-gray-800">Product {productIndex + 1}</h3>
                   {products.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeProduct(productIndex)}
                       className="text-gray-400 hover:text-pink-600 transition-colors p-1 rounded-full hover:bg-pink-50"
                     >
-                      <Minus size={isMobileView ? 16 : 20} />
+                      <Minus size={18} />
                     </button>
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-gray-700 text-sm sm:text-base font-medium mb-1">Product Name</label>
-                  <input
-                    required
-                    value={product.productName}
-                    onChange={(e) => updateProduct(productIndex, 'productName', e.target.value)}
-                    placeholder="e.g. Face Cream"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 text-sm placeholder-gray-400 focus:ring-2 focus:border-pink-500 focus:outline-none focus:ring-pink-500"
-                  />
+                <div className="grid grid-cols-1 gap-3 md:gap-4">
+                  <div>
+                    <label className="block text-gray-700 text-sm md:text-base font-medium mb-1 md:mb-2">Product Name</label>
+                    <input
+                      required
+                      value={product.productName}
+                      onChange={(e) => updateProduct(productIndex, 'productName', e.target.value)}
+                      placeholder="e.g. Face Cream"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 placeholder-gray-400 focus:ring-2 focus:border-pink-500 focus:outline-none focus:ring-pink-500 text-sm md:text-base"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 text-sm md:text-base font-medium mb-1 md:mb-2">Product Description</label>
+                    <textarea
+                      value={product.productDescription}
+                      onChange={(e) => updateProduct(productIndex, 'productDescription', e.target.value)}
+                      placeholder="Describe your product features, benefits, and specifications..."
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 placeholder-gray-400 focus:ring-2 focus:border-pink-500 focus:outline-none focus:ring-pink-500 text-sm md:text-base resize-vertical"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 text-sm md:text-base font-medium mb-1 md:mb-2">SKU (Optional)</label>
+                    <input
+                      value={product.sku || ''}
+                      onChange={(e) => updateProduct(productIndex, 'sku', e.target.value)}
+                      placeholder="e.g. PROD-123"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 placeholder-gray-400 focus:ring-2 focus:border-pink-500 focus:outline-none focus:ring-pink-500 text-sm md:text-base"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 text-sm sm:text-base font-medium mb-1">SKU (Optional)</label>
-                  <input
-                    value={product.sku || ''}
-                    onChange={(e) => updateProduct(productIndex, 'sku', e.target.value)}
-                    placeholder="e.g. PROD-123"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 text-sm placeholder-gray-400 focus:ring-2 focus:border-pink-500 focus:outline-none focus:ring-pink-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 text-sm sm:text-base font-medium mb-1">Website Link</label>
+                  <label className="block text-gray-700 text-sm md:text-base font-medium mb-1 md:mb-2">Website Link</label>
                   <div className="relative">
                     <input
                       required
                       value={product.websiteLink}
                       onChange={(e) => updateProduct(productIndex, 'websiteLink', e.target.value)}
                       placeholder="https://example.com/product"
-                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm md:text-base"
                     />
                     <LinkIcon className="absolute left-3 top-2.5 text-pink-400" size={16} />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <label className="text-gray-700 text-sm sm:text-base font-medium">Units & Prices</label>
-                  <button
-                    type="button"
-                    onClick={() => addUnit(productIndex)}
-                    className="text-gray-400 hover:text-pink-600 transition-colors p-1 rounded-full hover:bg-pink-50"
-                  >
-                    <Plus size={16} />
-                  </button>
-                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="text-gray-700 text-sm md:text-base font-medium">Units & Prices</label>
+                    <button
+                      type="button"
+                      onClick={() => addUnit(productIndex)}
+                      className="text-gray-400 hover:text-pink-600 transition-colors p-1 rounded-full hover:bg-pink-50"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
 
-                {product.units.map((unit, unitIndex) => (
-                  <div key={unitIndex} className="flex gap-2 items-center">
-                    <div className="flex-1 min-w-0"> {/* Added container with min-width */}
+                  {product.units.map((unit, unitIndex) => (
+                    <div key={unitIndex} className="flex flex-col md:flex-row gap-2 md:gap-3 mb-2 md:items-center">
                       <input
                         required
                         value={unit.unit}
                         onChange={(e) => updateUnit(productIndex, unitIndex, 'unit', e.target.value)}
                         placeholder="e.g. 100ml"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm md:text-base"
                       />
-                    </div>
-                    <div className="flex-1 min-w-0"> {/* Added container with min-width */}
                       <input
                         required
                         type="text"
@@ -390,35 +469,35 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
                           updateUnit(productIndex, unitIndex, 'price', priceWithSymbol);
                         }}
                         placeholder="₹0.00"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm md:text-base"
                       />
+                      {product.units.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeUnit(productIndex, unitIndex)}
+                          className="text-gray-400 hover:text-pink-600 transition-colors p-1 rounded-full hover:bg-pink-50 ml-auto md:ml-0"
+                        >
+                          <Minus size={16} />
+                        </button>
+                      )}
                     </div>
-                    {product.units.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeUnit(productIndex, unitIndex)}
-                        className="text-gray-400 hover:text-pink-600 transition-colors p-1 rounded-full hover:bg-pink-50 flex-shrink-0"
-                      >
-                        <Minus size={14} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+
                 <div>
-                  <label className="block text-sm sm:text-base font-medium text-gray-700 mb-1">Product Photo</label>
-                  <div className="flex flex-col">
-                    <label className="cursor-pointer mb-2">
+                  <label className="block text-sm md:text-base font-medium text-gray-700 mb-1 md:mb-2">Product Photo</label>
+                  <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-10">
+                    <label className="cursor-pointer mb-2 md:mb-0">
                       <div className="relative">
                         {product.productPhotoPreview ? (
                           <img
                             src={product.productPhotoPreview}
                             alt="Product preview"
-                            className="w-full h-32 object-cover rounded-lg"
+                            className="w-24 h-24 md:w-32 md:h-32 object-cover rounded-lg"
                           />
                         ) : (
-                          <div className="w-full h-32 border-2 border-dashed border-pink-200 rounded-md flex items-center justify-center bg-pink-50">
-                            <Image className="text-pink-400" size={36} />
+                          <div className="w-24 h-24 md:w-32 md:h-32 border-2 border-dashed border-pink-200 rounded-md flex items-center justify-center bg-pink-50">
+                            <Image className="text-pink-400" size={24} />
                           </div>
                         )}
                         <input
@@ -429,59 +508,42 @@ const ProductDetailsTemplate: React.FC<ProductDetailsTemplateProps> = ({
                         />
                       </div>
                     </label>
-                    <input
-                      type="text"
-                      placeholder="Or enter image URL"
-                      value={product.productPhotoUrl || ''}
-                      onChange={(e) => handleImageUrlInput(productIndex, e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                    />
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        placeholder="Or enter image URL"
+                        value={product.productPhotoUrl || ''}
+                        onChange={(e) => handleImageUrlInput(productIndex, e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm md:text-base"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-0 sm:p-6 border border-pink-100">
-            {isMobileView ? (
+          <div className="bg-white rounded-lg shadow-md p-4 md:p-6 border border-pink-100">
+            <div className="flex flex-col gap-3">
               <button
                 type="submit"
-                className="w-full p-3 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 focus:outline-none transition-all duration-300 flex items-center justify-center"
+                className="w-full px-4 py-2.5 bg-pink-600 text-white rounded-md font-medium hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition-all duration-300 flex items-center justify-center gap-2 shadow-sm text-sm md:text-base"
               >
-                <Save size={14} className="mr-1" />
-                Save Product
+                <Save size={16} />
+                Save Product Details
               </button>
-            ) : (
-              <div className="flex flex-col sm:flex-row gap-3 p-6">
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2.5 bg-pink-600 text-white rounded-md font-medium hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition-all duration-300 flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <Save size={16} />
-                  Save Product Details
-                </button>
 
-                <button
-                  type="button"
-                  onClick={handleUpdate}
-                  className="flex-1 px-4 py-2.5 bg-gray-200 text-gray-800 rounded-md font-medium hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 transition-all duration-300 flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <Save size={16} />
-                  Update Product Details
-                </button>
-              </div>
-            )}
+              <button
+                type="button"
+                onClick={handleUpdate}
+                className="w-full px-4 py-2.5 bg-gray-200 text-gray-800 rounded-md font-medium hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 transition-all duration-300 flex items-center justify-center gap-2 shadow-sm text-sm md:text-base"
+              >
+                <Save size={16} />
+                Update Product Details
+              </button>
+            </div>
           </div>
         </form>
-        
-        {!isMobileView && (
-          <Link
-            to="/tech-product-template"
-            className="absolute top-20 left-[17rem] px-4 py-2 bg-white text-pink-600 rounded-md font-medium hover:bg-pink-50 shadow-sm transition-all duration-300 flex items-center gap-2 border border-pink-200"
-          >
-            ← Back
-          </Link>
-        )}
       </div>
     </div>
   );

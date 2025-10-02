@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { Globe, ShoppingBag, ShoppingCart} from 'lucide-react';
+import { Globe, ShoppingBag, ShoppingCart } from 'lucide-react';
+import { Link } from "react-router-dom"; // Import Link from react-router-dom
 
 // Define interfaces for our types
 interface ShopifyCredentials {
@@ -41,13 +42,13 @@ export default function WebsiteUrlConfiguration() {
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleTypeChange = (id: number, newType: 'shopify' | 'woocommerce') => {
-    setWebsites(prev => 
-      prev.map(website => 
+    setWebsites(prev =>
+      prev.map(website =>
         website.id === id ? {
           ...website,
           type: newType,
-          credentials: newType === 'shopify' 
-            ? { apiKey: '', apiPassword: '', storeUrl: '', websiteUrl: '' } 
+          credentials: newType === 'shopify'
+            ? { apiKey: '', apiPassword: '', storeUrl: '', websiteUrl: '' }
             : { consumerKey: '', consumerSecret: '', url: '' }
         } : website
       )
@@ -56,8 +57,8 @@ export default function WebsiteUrlConfiguration() {
 
   const handleCredentialChange = (id: number, field: string, value: string) => {
     // For all fields - removed special validation
-    setWebsites(prev => 
-      prev.map(website => 
+    setWebsites(prev =>
+      prev.map(website =>
         website.id === id ? {
           ...website,
           credentials: {
@@ -71,7 +72,7 @@ export default function WebsiteUrlConfiguration() {
 
   const addWebsite = () => {
     setWebsites(prev => [
-      ...prev, 
+      ...prev,
       {
         id: prev.length + 1,
         type: 'shopify',
@@ -124,7 +125,7 @@ export default function WebsiteUrlConfiguration() {
     try {
       // Use the API route like in the second code
       await axios.post(
-        'https://app.instaxbot.com/api/urlconfigurationroute/storeCredentials',
+        'https://ddcf6bc6761a.ngrok-free.app/api/urlconfigurationroute/storeCredentials',
         {
           websites,
           tenentId
@@ -142,6 +143,13 @@ export default function WebsiteUrlConfiguration() {
 
   return (
     <div className="bg-gray-50 min-h-screen p-3 sm:p-8">
+      {/* Back Button is now here */}
+      <Link
+        to="/setting" // Navigates to the setting page
+        className="inline-block mb-6 ml-4 px-4 py-2 bg-white text-black-600 rounded-md font-medium hover:bg-pink-50 shadow-sm transition-all duration-300 border border-pink-200"
+      >
+        ← Back
+      </Link>
       <div className="max-w-4xl mx-auto">
         <div className="p-4 sm:p-6 text-center">
           <div className="flex justify-center mb-2 sm:mb-3">

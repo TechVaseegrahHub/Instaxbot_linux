@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import { Link } from "react-router-dom"; // Import Link from react-router-dom
 
 export default function FileUpload() {
   const [file, setFile] = useState<File | null>(null);
@@ -50,7 +51,7 @@ export default function FileUpload() {
     try {
       
       const response = await axios.post(
-        'https://app.instaxbot.com/api/fileuploadroute/upload',
+        'https://ddcf6bc6761a.ngrok-free.app/api/fileuploadroute/upload',
         formData,
         {
           headers: {
@@ -98,8 +99,15 @@ export default function FileUpload() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center -mt-16 px-4 sm:px-0">
-      <div className="w-full max-w-[410px]">
+    <div className="min-h-screen bg-gray-100 py-8 px-4 w-full">
+      {/* Back Button is now here, matching the previous file's structure */}
+      <Link
+        to="/setting" // You can change this to the appropriate back path
+        className="inline-block mb-6 ml-4 px-4 py-2 bg-white text-black-600 rounded-md font-medium hover:bg-pink-50 shadow-sm transition-all duration-300 border border-pink-200"
+      >
+        ← Back
+      </Link>
+      <div className="w-full max-w-[410px] mx-auto">
         <div className="bg-white shadow-lg px-4 sm:px-6 py-4 sm:py-5 text-center rounded-xl">
           <h1 className="text-xl sm:text-2xl font-bold text-black">Upload File</h1>
         </div>

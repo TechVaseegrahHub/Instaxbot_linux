@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Clock } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import TemplateMessage, { TemplateMessageProps } from '@/components/TemplateMessage';
@@ -10,6 +10,7 @@ import CarouselMessage from '@/components/CarouselMessage';
 import { getWebSocketService, WebSocketService } from '../Services/websocketService';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 
+// --- Interface Definitions (No changes here) ---
 interface CarouselProduct {
   title: string;
   subtitle: string;
@@ -97,9 +98,6 @@ interface Order {
   timestamp: string;
   updated_at: string;
 }
-// Add these interfaces for better type safety
-
-// WebSocket message type definitions
 interface WebSocketAuthMessage {
   type: 'auth';
   status: 'success' | 'error';
@@ -182,6 +180,7 @@ type WebSocketMessage =
   | WebSocketHumanAgentContactsMessage
   | SearchResponse;
 
+
 export default function LiveChat() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -211,6 +210,64 @@ export default function LiveChat() {
   const [latestOrders, setLatestOrders] = useState<Order[]>([]);
   const [totalOrderCount, setTotalOrderCount] = useState<number>(0);
   const [showOrderDetails, setShowOrderDetails] = useState<boolean>(false);
+  
+  // --- NEW: State for conversation window expiration ---
+  const [isWindowExpired, setIsWindowExpired] = useState(false);
+
+  // --- NEW: Effect to check conversation window status ---
+  useEffect(() => {
+    const checkWindowStatus = () => {
+        // If no contact is selected or there are no messages, we can't send a freeform message.
+        if (!selectedContact || messages.length === 0) {
+            setIsWindowExpired(true);
+            return;
+        }
+
+        // Find the timestamp of the very last message sent by the customer (not the agent).
+        const lastCustomerMessage = messages
+            .filter(msg => msg.senderId === selectedContact.senderId)
+            .sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime())[0];
+
+        // --- START OF CHANGES: ADD THESE LOGS FOR DEBUGGING ---
+        console.log("--- Checking Conversation Window ---");
+        console.log("Last Customer Message Object:", lastCustomerMessage);
+        // --- END OF CHANGES ---
+
+        // If the customer has never sent a message, the window is not open.
+        if (!lastCustomerMessage) {
+            console.log("Result: No customer message found. Window is expired.");
+            setIsWindowExpired(true);
+            return;
+        }
+
+        const lastMessageTime = new Date(lastCustomerMessage.Timestamp).getTime();
+        const now = new Date().getTime();
+        const hoursSinceLastMessage = (now - lastMessageTime) / (1000 * 60 * 60);
+
+        // --- START OF CHANGES: ADD MORE LOGS HERE ---
+        console.log("Last Message Time:", new Date(lastMessageTime).toLocaleString());
+        console.log("Current Time:", new Date(now).toLocaleString());
+        console.log("Hours Since Last Message:", hoursSinceLastMessage);
+        console.log("Is Window Expired (is hours > 24?):", hoursSinceLastMessage > 24);
+        console.log("------------------------------------");
+        // --- END OF CHANGES ---
+
+
+        // Check if more than 24 hours have passed.
+        setIsWindowExpired(hoursSinceLastMessage > 24);
+    };
+
+    // Run the check immediately when the selected contact or messages change.
+    checkWindowStatus();
+
+    // Set up an interval to re-check every minute for real-time updates.
+    const interval = setInterval(checkWindowStatus, 60 * 1000);
+
+    // Cleanup function to clear the interval when the component unmounts or dependencies change.
+    return () => clearInterval(interval);
+
+}, [selectedContact, messages]);
+
 
   // Helper functions
   const formatMessageTime = (timestamp: string) => {
@@ -302,8 +359,8 @@ export default function LiveChat() {
               const bTime = b.lastMessage?.Timestamp || b.createdAt;
               return new Date(bTime).getTime() - new Date(aTime).getTime();
             });
-            setShowLoadLess(sortedContacts.length > 6);
-            setHasMore(data.contacts.length === 6);
+            setShowLoadLess(sortedContacts.length > 25);
+            setHasMore(data.contacts.length === 25);
             setIsLoadingMore(false);
             return sortedContacts;
           });
@@ -326,7 +383,7 @@ export default function LiveChat() {
           });
 
           // Take only the first 6 contacts
-          return updatedContacts.slice(0, 6);
+          return updatedContacts.slice(0, 25);
         });
         break;
 
@@ -434,8 +491,8 @@ export default function LiveChat() {
                 const bTime = b.lastMessage?.Timestamp || b.createdAt;
                 return new Date(bTime).getTime() - new Date(aTime).getTime();
               });
-              setShowLoadLess(sortedContacts.length > 6);
-              return sortedContacts.slice(0, 6);
+              setShowLoadLess(sortedContacts.length > 25);
+              return sortedContacts.slice(0, 25);
             }
 
             return prevContacts;
@@ -557,7 +614,7 @@ export default function LiveChat() {
               const bTime = b.lastMessage?.Timestamp || b.createdAt;
               return new Date(bTime).getTime() - new Date(aTime).getTime();
             });
-            setShowLoadLessHumanAgents(sortedContacts.length > 6);
+            setShowLoadLessHumanAgents(sortedContacts.length > 25);
             setHasMoreHumanAgents(prevContacts.length < data.totalCount);
             setIsLoadingMoreHumanAgents(false);
 
@@ -598,7 +655,7 @@ export default function LiveChat() {
               type: 'get_contacts',
               tenentId,
               page: 1,
-              limit: 6
+              limit: 25
             });
           }
         }, 1000);
@@ -606,7 +663,7 @@ export default function LiveChat() {
     };
     wsService.onConnect(handleConnect);
     if (!wsService.isConnected()) {
-      const appUrl = process.env.REACT_APP_API_URL || 'https://app.instaxbot.com';
+      const appUrl = process.env.REACT_APP_API_URL || 'https://ddcf6bc6761a.ngrok-free.app';
       wsService.connect(appUrl);
     }
     return () => {
@@ -643,7 +700,7 @@ export default function LiveChat() {
             type: 'get_human_agent_contacts',
             tenentId,
             page: 1,
-            limit: 6
+            limit: 25
           });
         }
       }
@@ -920,7 +977,7 @@ const getStatusColor = (status: string): string => {
           type: 'get_contacts',
           tenentId,
           page: nextPage,
-          limit: 6
+          limit: 25
         });
       }
     }
@@ -929,13 +986,13 @@ const getStatusColor = (status: string): string => {
   const handleLoadLess = useCallback(() => {
     setContacts(prevContacts => {
       // Calculate how many pages we currently have
-      const currentPages = Math.ceil(prevContacts.length / 6);
+      const currentPages = Math.ceil(prevContacts.length / 25);
 
       // If we have more than one page, reduce by one page
       if (currentPages > 1) {
-        const newContactCount = (currentPages - 1) * 6;
+        const newContactCount = (currentPages - 1) * 25;
         const reducedContacts = prevContacts.slice(0, newContactCount);
-        setShowLoadLess(reducedContacts.length > 6);
+        setShowLoadLess(reducedContacts.length > 25);
         setPage(currentPages - 1);
         return reducedContacts;
       }
@@ -959,7 +1016,7 @@ const getStatusColor = (status: string): string => {
           type: 'get_human_agent_contacts',
           tenentId,
           page: nextPage,
-          limit: 6
+          limit: 25
         });
       }
     }
@@ -968,13 +1025,13 @@ const getStatusColor = (status: string): string => {
   const handleLoadLessHumanAgents = useCallback(() => {
     setHumanAgentContacts(prevContacts => {
       // Calculate how many pages we currently have
-      const currentPages = Math.ceil(prevContacts.length / 6);
+      const currentPages = Math.ceil(prevContacts.length / 25);
 
       // If we have more than one page, reduce by one page
       if (currentPages > 1) {
-        const newContactCount = (currentPages - 1) * 6;
+        const newContactCount = (currentPages - 1) * 25;
         const reducedContacts = prevContacts.slice(0, newContactCount);
-        setShowLoadLessHumanAgents(reducedContacts.length > 6);
+        setShowLoadLessHumanAgents(reducedContacts.length > 25);
 
         // Important: Reset humanAgentPage to prevent pagination issues
         setHumanAgentPage(1);
@@ -1014,7 +1071,7 @@ const getStatusColor = (status: string): string => {
           type: 'get_contacts',
           tenentId,
           page: 1,
-          limit: 6
+          limit: 25
         });
       }
       return;
@@ -1109,6 +1166,24 @@ const onEmojiClick = (emojiClickData: EmojiClickData) => {
  setNewMessage((prevMessage) => prevMessage + emojiClickData.emoji);
  setShowEmojiPicker(false);
 };
+
+
+// --- NEW: Component for the expired window indicator ---
+const ChatWindowExpiredIndicator = () => (
+    <div className="flex-shrink-0 p-4 border-t bg-white">
+        <div className="flex items-center bg-yellow-100 border border-yellow-300 rounded-lg p-3">
+            <div className="flex items-center">
+                <Clock className="w-6 h-6 text-yellow-600 mr-3" />
+                <div className="text-sm">
+                    <p className="font-semibold text-yellow-800">Conversation window expired</p>
+                    <p className="text-yellow-700">Use templates to re-engage the customer.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
+
   return (
     <div className="flex h-[91vh] overflow-hidden">
       {/* Left Sidebar - Contact List */}
@@ -1352,7 +1427,7 @@ const onEmojiClick = (emojiClickData: EmojiClickData) => {
       )}
       <div className="ml-3">
         <div className="font-semibold">{selectedContact.name === "Nil" ? selectedContact.username : selectedContact.name}</div>
-        <div className="text-sm text-gray-500">{selectedContact.senderId}</div>
+        
       </div>
     </div>
     
@@ -1573,70 +1648,75 @@ const onEmojiClick = (emojiClickData: EmojiClickData) => {
                 <div ref={messagesEndRef} />
               </div>
             </div>
-  
-            {/* Message Input */}
-            <div className="flex-shrink-0 p-4 border-t bg-white">
-             <div className="flex items-center">
-               <div className="flex-1 flex items-center bg-gray-100 rounded-full px-4 py-2">
-                 <div className="relative">
-                   <button 
-                     className="p-1 text-gray-500 hover:text-gray-700 focus:outline-none mr-2" 
-                     title="Emoji"
-                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                   >
-                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-                   </button>
-                   
-                   {showEmojiPicker && (
-                   <div className="absolute bottom-10 left-0 z-10">
-                     <EmojiPicker onEmojiClick={onEmojiClick} theme={Theme.AUTO} width={320} height={450} />
-                   </div>
-                 )}
-                 </div>
-                 
-                 <Input
-                   type="text"
-                   value={newMessage}
-                   onChange={(e) => setNewMessage(e.target.value)}
-                   onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                   placeholder="Message..."
-                   className="flex-1 border-0 bg-transparent focus:ring-0 focus:outline-none text-base"
-                   disabled={sendingMessage}
-                 />
 
-                 {!newMessage.trim() ? (
-                   <div className="flex items-center">
-                     <label htmlFor="image-upload" className="p-1 text-gray-500 hover:text-gray-700 cursor-pointer mx-1" title="Image">
-                       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                       <input id="image-upload" type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                     </label>
-                   </div>
-                 ) : (
-                   <Button 
-                     onClick={handleSend}
-                     disabled={sendingMessage}
-                     className="p-1 border-0 bg-transparent hover:bg-transparent text-blue-500 focus:ring-0 ml-1"
-                   >
-                     {sendingMessage ? 
-                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" /> : 
-                       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></svg>
-                     }
-                   </Button>
-                 )}
-               </div>
-               
-               {!newMessage.trim() && (
-                 <button 
-                   className="ml-3 p-1 text-gray-500 hover:text-gray-700 focus:outline-none" 
-                   title="Heart"
-                   onClick={handleHeartSend}
-                   disabled={sendingMessage}
-                 >
-                   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-                 </button>
-               )}
-             </div>
-           </div>
+            {/* --- UPDATED: Conditionally render message input or expired indicator --- */}
+            {isWindowExpired ? (
+                <ChatWindowExpiredIndicator />
+            ) : (
+                <div className="flex-shrink-0 p-4 border-t bg-white">
+                    <div className="flex items-center">
+                        <div className="flex-1 flex items-center bg-gray-100 rounded-full px-4 py-2">
+                            <div className="relative">
+                                <button
+                                    className="p-1 text-gray-500 hover:text-gray-700 focus:outline-none mr-2"
+                                    title="Emoji"
+                                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                                </button>
+
+                                {showEmojiPicker && (
+                                    <div className="absolute bottom-10 left-0 z-10">
+                                        <EmojiPicker onEmojiClick={onEmojiClick} theme={Theme.AUTO} width={320} height={450} />
+                                    </div>
+                                )}
+                            </div>
+
+                            <Input
+                                type="text"
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                                placeholder="Message..."
+                                className="flex-1 border-0 bg-transparent focus:ring-0 focus:outline-none text-base"
+                                disabled={sendingMessage}
+                            />
+
+                            {!newMessage.trim() ? (
+                                <div className="flex items-center">
+                                    <label htmlFor="image-upload" className="p-1 text-gray-500 hover:text-gray-700 cursor-pointer mx-1" title="Image">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                                        <input id="image-upload" type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                                    </label>
+                                </div>
+                            ) : (
+                                <Button
+                                    onClick={handleSend}
+                                    disabled={sendingMessage}
+                                    className="p-1 border-0 bg-transparent hover:bg-transparent text-blue-500 focus:ring-0 ml-1"
+                                >
+                                    {sendingMessage ?
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" /> :
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></svg>
+                                    }
+                                </Button>
+                            )}
+                        </div>
+
+                        {!newMessage.trim() && (
+                            <button
+                                className="ml-3 p-1 text-gray-500 hover:text-gray-700 focus:outline-none"
+                                title="Heart"
+                                onClick={handleHeartSend}
+                                disabled={sendingMessage}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500">

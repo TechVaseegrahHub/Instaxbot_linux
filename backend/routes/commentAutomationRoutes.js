@@ -10,6 +10,9 @@ const { v4: uuidv4 } = require('uuid');
 
 router.get("/comments-by-media", async (req, res) => {
   const tenentId = req.query.tenentId;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
   
   if (!tenentId) {
     return res.status(400).json({ success: false, message: "Missing tenentId" });
@@ -23,17 +26,38 @@ router.get("/comments-by-media", async (req, res) => {
       return res.status(404).json({ success: false, message: "Access token not found for this tenent" });
     }
 
-    // First, get unique media IDs from comments collection
+    // Get total count of unique media IDs that have comments
+    const totalMediaWithComments = await Comment.aggregate([
+      { $match: { tenentId: tenentId } },
+      { $group: { _id: "$mediaId" } },
+      { $count: "total" }
+    ]);
+    
+    const totalCount = totalMediaWithComments.length > 0 ? totalMediaWithComments[0].total : 0;
+
+    // Get unique media IDs from comments collection with comment counts (paginated)
     const commentsByMedia = await Comment.aggregate([
       { $match: { tenentId: tenentId } },
-      { $group: { _id: "$mediaId", count: { $sum: 1 } } }
+      { $group: { _id: "$mediaId", count: { $sum: 1 } } },
+      { $skip: skip },
+      { $limit: limit }
     ]);
-    console.log("commentsByMedia",commentsByMedia);
-    // If no comments found, return empty array
+    
+    console.log("commentsByMedia", commentsByMedia);
+    
+    // If no comments found, return empty array with pagination info
     if (commentsByMedia.length === 0) {
       return res.status(200).json({ 
         success: true, 
-        data: [] 
+        data: [],
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(totalCount / limit),
+          totalItems: totalCount,
+          itemsPerPage: limit,
+          hasNextPage: false,
+          hasPreviousPage: false
+        }
       });
     }
 
@@ -46,11 +70,32 @@ router.get("/comments-by-media", async (req, res) => {
       commentCountMap[item._id] = item.count;
     });
 
+    // Get the latest automation rule createdAt for each mediaId
+    const latestRulesByMedia = await CommentAutomationRule.aggregate([
+      { 
+        $match: { 
+          tenentId: tenentId,
+          mediaId: { $in: mediaIds }
+        } 
+      },
+      {
+        $group: {
+          _id: "$mediaId",
+          latestRuleCreatedAt: { $max: "$createdAt" }
+        }
+      }
+    ]);
+
+    // Create a map of mediaId -> latest rule createdAt
+    const ruleCreatedAtMap = {};
+    latestRulesByMedia.forEach(item => {
+      ruleCreatedAtMap[item._id] = item.latestRuleCreatedAt;
+    });
+
     // Fetch details for each media ID from Instagram
     const enrichedMedia = [];
     
     // Process media IDs in batches to avoid rate limiting
-    // Instagram Graph API allows fetching one media item at a time
     for (const mediaId of mediaIds) {
       try {
         const mediaResponse = await axios.get(`https://graph.instagram.com/${mediaId}`, {
@@ -65,8 +110,8 @@ router.get("/comments-by-media", async (req, res) => {
           enrichedMedia.push({
             ...media,
             commentCount: commentCountMap[media.id] || 0,
-            // Use thumbnail_url for videos or media_url for images
-            displayUrl: media.media_type === 'VIDEO' ? media.thumbnail_url : media.media_url
+            displayUrl: media.media_type === 'VIDEO' ? media.thumbnail_url : media.media_url,
+            latestRuleCreatedAt: ruleCreatedAtMap[media.id] || null
           });
         }
       } catch (error) {
@@ -75,10 +120,36 @@ router.get("/comments-by-media", async (req, res) => {
       }
     }
 
-    //console.log("enrichedMedia", enrichedMedia);
+    // Sort the enriched media by latest rule createdAt (most recent first)
+    const sortedMedia = enrichedMedia.sort((a, b) => {
+      if (a.latestRuleCreatedAt && b.latestRuleCreatedAt) {
+        return new Date(b.latestRuleCreatedAt) - new Date(a.latestRuleCreatedAt);
+      }
+      if (a.latestRuleCreatedAt && !b.latestRuleCreatedAt) {
+        return -1;
+      }
+      if (!a.latestRuleCreatedAt && b.latestRuleCreatedAt) {
+        return 1;
+      }
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    });
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
     return res.status(200).json({ 
       success: true, 
-      data: enrichedMedia 
+      data: sortedMedia,
+      pagination: {
+        currentPage: page,
+        totalPages: totalPages,
+        totalItems: totalCount,
+        itemsPerPage: limit,
+        hasNextPage: hasNextPage,
+        hasPreviousPage: hasPreviousPage
+      }
     });
     
   } catch (error) {
@@ -146,9 +217,15 @@ router.get("/check-token", async (req, res) => {
 });
 
 // Route to fetch media
+// Route to fetch media with pagination
 router.get("/media", async (req, res) => {
   const tenentId = req.query.tenentId;
-  console.log("response for tenentId",tenentId);
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  
+  console.log("response for tenentId", tenentId);
+  console.log("Pagination - Page:", page, "Limit:", limit);
+  
   if (!tenentId) {
     return res.status(400).json({ success: false, message: "Missing tenentId" });
   }
@@ -162,22 +239,85 @@ router.get("/media", async (req, res) => {
     }
 
     const userAccessToken = latestToken.userAccessToken;
-
     const igMediaUrl = 'https://graph.instagram.com/me/media';
 
-    const response = await axios.get(igMediaUrl, {
+    let allMedia = [];
+    let nextPageUrl = null;
+    let currentPage = 1;
+    
+    // First, get the first batch of media
+    const initialResponse = await axios.get(igMediaUrl, {
       params: {
         access_token: userAccessToken,
         fields: 'id,media_type,media_url,thumbnail_url,caption,timestamp,permalink',
-        limit: 20,
+        limit: 50, // Get more data initially to handle pagination properly
       }
     });
-  //console.log("response for media",response);
-    if (response.data && response.data.data && response.data.data.length > 0) {
-      return res.status(200).json({ success: true, data: response.data.data });
-    } else {
+
+    if (!initialResponse.data || !initialResponse.data.data) {
       return res.status(404).json({ success: false, message: "No media found for this Instagram account." });
     }
+
+    allMedia = initialResponse.data.data;
+    nextPageUrl = initialResponse.data.paging?.next;
+
+    // If we need more data and there are more pages, fetch them
+    while (allMedia.length < (page * limit) && nextPageUrl) {
+      try {
+        const nextResponse = await axios.get(nextPageUrl);
+        if (nextResponse.data && nextResponse.data.data) {
+          allMedia = allMedia.concat(nextResponse.data.data);
+          nextPageUrl = nextResponse.data.paging?.next;
+        } else {
+          break;
+        }
+      } catch (error) {
+        console.error("Error fetching next page:", error.response?.data || error.message);
+        break;
+      }
+    }
+
+    // Calculate pagination
+    const totalItems = allMedia.length;
+    const totalPages = Math.ceil(totalItems / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    
+    // Get the paginated slice
+    const paginatedMedia = allMedia.slice(startIndex, endIndex);
+    
+    // Pagination metadata
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    if (paginatedMedia.length === 0 && page > 1) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Page not found",
+        pagination: {
+          currentPage: page,
+          totalPages: totalPages,
+          totalItems: totalItems,
+          itemsPerPage: limit,
+          hasNextPage: false,
+          hasPreviousPage: hasPreviousPage
+        }
+      });
+    }
+
+    return res.status(200).json({ 
+      success: true, 
+      data: paginatedMedia,
+      pagination: {
+        currentPage: page,
+        totalPages: totalPages,
+        totalItems: totalItems,
+        itemsPerPage: limit,
+        hasNextPage: hasNextPage,
+        hasPreviousPage: hasPreviousPage
+      }
+    });
+
   } catch (error) {
     console.error("Error fetching media:", error.response?.data || error.message);
     return res.status(500).json({ success: false, message: "Failed to fetch media from Instagram." });

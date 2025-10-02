@@ -24,12 +24,7 @@ export default function EcommerceProductTemplate() {
           >
             Go to Product Type Template
           </Link>
-          <Link
-            to="/product-list-template"
-            className="block w-full px-4 md:px-6 py-3 md:py-4 border-2 text-center border-pink-300 text-black rounded-lg text-base md:text-lg font-semibold hover:bg-pink-100 hover:border-pink-400 transition-colors duration-200"
-          >
-            Go to Product List Template
-          </Link>
+        
           <Link
             to="/product-details-template"
             className="block w-full px-4 md:px-6 py-3 md:py-4 border-2 text-center border-pink-300 text-black rounded-lg text-base md:text-lg font-semibold hover:bg-pink-100 hover:border-pink-400 transition-colors duration-200"

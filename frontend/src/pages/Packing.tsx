@@ -30,7 +30,7 @@ const Packing: React.FC = () => {
   const skuInputRef = useRef<HTMLInputElement>(null);
   const orderInputRef = useRef<HTMLInputElement>(null);
   
-  const apiBaseUrl = 'https://app.instaxbot.com';
+  const apiBaseUrl = 'https://ddcf6bc6761a.ngrok-free.app';
 
   // Simplified useEffect - focus on order input when component mounts
   useEffect(() => {
@@ -49,52 +49,81 @@ const Packing: React.FC = () => {
   }, [products, customerNote]);
 
   const fetchProducts = async (): Promise<void> => {
-    setLoading(true);
-    setProductsFetched(false);
-    
-    const tenentId = localStorage.getItem('tenentid');
-    if (!tenentId) {
-      toast.error('Tenant ID not found. Please log in again.');
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      // Use JSON data instead of FormData
-      const response = await axios.post(
-        `${apiBaseUrl}/api/packingroute/fetch-products/${orderNumber}`,
-        { tenentId },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      
-      console.log('API Response:', response.data);
-      setProducts(response.data.products || []);
-      setCustomerNote(response.data.customerNote || '');
-      setVerifiedSkus([]);
-      setProductsFetched(true);
-      toast.success('Products fetched successfully');
-    } catch (error: any) {
-      console.error('Error fetching data:', error);
-      if (error.response) {
-        console.error('Error response:', error.response.data);
-        console.error('Error status:', error.response.status);
-        console.error('Error headers:', error.response.headers);
-      } else if (error.request) {
-        console.error('Error request:', error.request);
-      } else {
-        console.error('Error message:', error.message);
+  setLoading(true);
+  setProductsFetched(false);
+  
+  const tenentId = localStorage.getItem('tenentid');
+  if (!tenentId) {
+    toast.error('Tenant ID not found. Please log in again.');
+    setLoading(false);
+    return;
+  }
+  
+  try {
+    // Use JSON data instead of FormData
+    const response = await axios.post(
+      `${apiBaseUrl}/api/packingroute/fetch-products/${orderNumber}`,
+      { tenentId },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
       }
-      toast.error('Error fetching data. Please try again later.');
-      setProducts([]);
-      setCustomerNote('');
-    } finally {
-      setLoading(false);
+    );
+    
+    console.log('API Response:', response.data);
+    
+    // ✅ CHECK FOR ALERTS FIRST - before showing any success message
+    if (response.data.showAlert && response.data.alertMessage) {
+      // Show the specific alert message based on order status
+      if (response.data.alertMessage.includes('Payment')) {
+        toast.warning(response.data.alertMessage);
+      } else if (response.data.alertMessage.includes('shipped')) {
+        toast.info(response.data.alertMessage);
+      } else {
+        toast.warning(response.data.alertMessage);
+      }
+      
+      // For CREATED orders, don't set products or show success
+      if (!response.data.shouldFetchProducts) {
+        setProducts([]);
+        setCustomerNote('');
+        setVerifiedSkus([]);
+        setProductsFetched(false);
+        setLoading(false);
+        return;
+      }
     }
-  };
+    
+    // ✅ ONLY show success toast if no alert was shown
+    if (!response.data.showAlert) {
+      toast.success('Products fetched successfully');
+    }
+    
+    // Set the product data
+    setProducts(response.data.products || []);
+    setCustomerNote(response.data.customerNote || '');
+    setVerifiedSkus([]);
+    setProductsFetched(true);
+    
+  } catch (error: any) {
+    console.error('Error fetching data:', error);
+    if (error.response) {
+      console.error('Error response:', error.response.data);
+      console.error('Error status:', error.response.status);
+      console.error('Error headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('Error request:', error.request);
+    } else {
+      console.error('Error message:', error.message);
+    }
+    toast.error('Error fetching data. Please try again later.');
+    setProducts([]);
+    setCustomerNote('');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleFetchClick = (): void => {
     if (orderNumber) {

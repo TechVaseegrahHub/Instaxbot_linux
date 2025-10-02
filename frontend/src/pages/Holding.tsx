@@ -29,7 +29,7 @@ interface StatusBadgeProps {
 }
 
 // Configuration - Update these URLs to match your backend
-const API_BASE_URL = 'https://app.instaxbot.com/api'; // Update this to your backend URL
+const API_BASE_URL = 'https://ddcf6bc6761a.ngrok-free.app/api'; // Update this to your backend URL
 const ENDPOINTS = {
   ORDER_DETAILS: `${API_BASE_URL}/holdingroute/details`,
   UPDATE_HOLDING: `${API_BASE_URL}/holdingroute/update-holding`,

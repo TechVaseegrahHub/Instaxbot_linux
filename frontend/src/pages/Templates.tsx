@@ -21,8 +21,15 @@ export default function Templates() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center -mt-16 px-4 sm:px-0"> {/* Added px-4 for mobile padding */}
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gray-100 py-8 px-4 w-full">
+      {/* Back Button added here, matching the previous file's structure */}
+      <Link
+        to="/setting" // This navigates to the settings page
+        className="inline-block mb-6 ml-4 px-4 py-2 bg-white text-black-600 rounded-md font-medium hover:bg-pink-50 shadow-sm transition-all duration-300 border border-pink-200"
+      >
+        ← Back
+      </Link>
+      <div className="w-full max-w-md mx-auto">
         <div className="bg-white shadow-lg px-4 sm:px-6 py-4 sm:py-5 rounded-xl">
           <h1 className="text-xl sm:text-2xl font-bold text-black text-center">Templates Page</h1>
         </div>

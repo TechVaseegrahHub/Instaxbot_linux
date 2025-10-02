@@ -41,7 +41,7 @@ export default function Profile() {
         throw new Error('Required identifiers not found in local storage');
       }
       const response = await axios.get(
-        'https://app.instaxbot.com/api/profileroute/profile',
+        'https://ddcf6bc6761a.ngrok-free.app/api/profileroute/profile',
         {
           headers: {
             'Content-Type': 'application/json',

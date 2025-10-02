@@ -15,7 +15,7 @@ const router = express.Router();
 const multer = require('multer');
 const cors = require('cors');
 const WebSocket = require('ws');
-const appUrl = process.env.APP_URL || 'https://app.instaxbot.com';
+const appUrl = process.env.APP_URL || 'https://ddcf6bc6761a.ngrok-free.app';
 const WS_SECRET_KEY= process.env.WS_SECRET_KEY;
 const jwt = require('jsonwebtoken');
 const broadcastedModeUpdates = new Set();
@@ -77,7 +77,7 @@ const initializeWebSocket = (server) => {
 
   async function sendInstagramMessage(igId, userAccessToken, recipientId, messageText1,timestamp,tenentId) {
 
-    const url = `https://graph.instagram.com/v21.0/${igId}/messages`; 
+    const url = `https://graph.instagram.com/v23.0/${igId}/messages`; 
     const Metadata="send"
     const messageTextWithEmoji =" 🙎‍♂️:" +  messageText1;
     const data = {
@@ -115,6 +115,109 @@ const initializeWebSocket = (server) => {
     }
   }
 
+async function fetchInstagramMessagesWithUser({ tenentId, senderId }) {
+  try {
+    // Step 1: Get latest token for tenant
+    const latestToken = await LongToken.findOne({ tenentId })
+      .sort({ createdAt: -1 })
+      .limit(1);
+
+    if (!latestToken) {
+      console.warn('⚠️ No access token found for tenant:', tenentId);
+      return { error: 'No access token available for this tenant' };
+    }
+
+    const userAccessToken = latestToken.userAccessToken;
+    const instagramid = latestToken.Instagramid;
+
+    // Step 2: Fetch conversation with sender
+    const conversationRes = await fetch(
+      `https://graph.instagram.com/v23.0/me/conversations?user_id=${senderId}&access_token=${userAccessToken}`
+    );
+    const conversationData = await conversationRes.json();
+    const conversationId = conversationData?.data?.[0]?.id;
+
+    if (!conversationId) {
+      console.warn('⚠️ No conversation found with user:', senderId);
+      return {
+        messages: [],
+        message: 'No conversation found'
+      };
+    }
+
+    // Step 3: Fetch list of messages (IDs + timestamps)
+    const messagesRes = await fetch(
+      `https://graph.instagram.com/v23.0/${conversationId}?fields=messages&access_token=${userAccessToken}`
+    );
+    const messagesJson = await messagesRes.json();
+    const messages = messagesJson?.messages?.data || [];
+
+    //console.log(`📨 Found ${messages.length} Instagram messages with user ${senderId}`);
+    const detailedMessages = [];
+
+    for (const message of messages.slice(0, 20)) {
+      const messageId = message.id;
+
+      const detailRes = await fetch(
+        `https://graph.instagram.com/v23.0/${messageId}?fields=id,created_time,from,to,message&access_token=${userAccessToken}`
+      );
+
+      if (!detailRes.ok) {
+        const errorText = await detailRes.text();
+        console.warn(`⚠️ Failed to fetch details for message ID ${messageId}:`, errorText);
+        continue;
+      }
+
+      const detail = await detailRes.json();
+      detailedMessages.push(detail);
+      //console.log("📨 Full Message Detail:\n", JSON.stringify(detail, null, 2));
+
+      const senderIdFromApi = detail.from.id;
+      const recipientId = detail.to.data?.[0]?.id || instagramid;
+      const timestamp = new Date(detail.created_time);
+
+      // Check if this message already exists
+      const alreadyExists = await Message.findOne({
+        senderId: recipientId || senderIdFromApi,
+        tenentId,
+        Timestamp: timestamp
+      });
+
+      if (alreadyExists) {
+        //console.log(`⛔ Message ${detail.id} already exists, skipping save`);
+        continue;
+      }
+
+      // ✅ Save only if it's sent by our IG account and message is non-empty
+      if (
+        detail.message &&
+        detail.message.trim() !== '' &&
+        senderIdFromApi === instagramid
+      ) {
+        await Message.createTextMessage({
+          senderId: recipientId,
+          recipientId : senderIdFromApi,
+          tenentId,
+          messageid: detail.id,
+          response: detail.message,
+          Timestamp: timestamp
+        });
+        //console.log(`✅ Saved message ${detail.id} from our IG account to MongoDB`);
+      } else {
+        //console.log(`⚠️ Skipped message ${detail.id} (empty or not from our IG account)`);
+      }
+    }
+
+    return {
+      messages: detailedMessages,
+      message: 'Success'
+    };
+
+  } catch (err) {
+    console.error('💥 Error fetching Instagram messages with user:', err.message);
+    return { error: 'Error fetching Instagram messages' };
+  }
+}
 
   wss.on('connection', (ws) => {
     let streams = [];
@@ -166,7 +269,9 @@ const initializeWebSocket = (server) => {
           case 'init':
               tenentId = data.tenentId;
               senderId = data.senderId;
-              
+              /*if(tenentId!="dc7ab140-7206-4451-8af2-6966f969c096"){
+               const result = await fetchInstagramMessagesWithUser({ tenentId, senderId});
+              }*/
               //clients.set(`${tenentId}-${senderId}`, ws);
 
               // Only send message history, don't fetch contacts

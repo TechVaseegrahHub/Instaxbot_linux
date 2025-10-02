@@ -7,17 +7,37 @@ const LongToken = require('../models/LongToken');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 const SECRET_KEY = process.env.JWT_SECRET_KEY;
-const WS_SECRET_KEY= process.env.WS_SECRET_KEY;
+const WS_SECRET_KEY = process.env.WS_SECRET_KEY;
+
+
 // User signup
 router.post('/signup', async (req, res) => {
   try {
-    const tenentId = uuidv4();
-    const { name, email, password } = req.body;
+    const { name, email, password, verificationCode } = req.body;
+    
+    // Check if verification code is provided
+    if (!verificationCode) {
+      return res.status(400).json({ error: 'Verification code is required' });
+    }
+    
+    // Validate verification code
+    if (verificationCode !== process.env.VALID_VERIFICATION_CODE) {
+      return res.status(400).json({ error: 'Invalid verification code' });
+    }
+    
+    // Check if email already exists
     const existingEmail = await Signup.findOne({ email });
     if (existingEmail) {
       return res.status(400).json({ error: 'Email ID already registered' });
     }
+    
+    // Generate tenant ID
+    const tenentId = uuidv4();
+    
+    // Check if user should be admin
     const isAdmin = email === 'dev.vaseegrah@gmail.com';
+    
+    // Create new user
     const newsignup = new Signup({ 
       name, 
       email, 
@@ -26,12 +46,15 @@ router.post('/signup', async (req, res) => {
       isAdmin,
       blocked: false
     });
+    
     await newsignup.save();
+    
     res.status(201).json({ 
       message: 'User registered successfully', 
       alertMessage: 'You have been registered successfully!' 
     });
   } catch (error) {
+    console.error('Signup error:', error);
     res.status(500).json({ error: 'Failed to register user' });
   }
 });
@@ -50,6 +73,7 @@ router.post('/login', async (req, res) => {
     }
     const isAdmin = logindata.isAdmin;
     const blocked = logindata.blocked;
+    const type = logindata.type;
     const token = jwt.sign(
       { email, password, tenentId: logindata.tenentId,isAdmin}, 
       SECRET_KEY
@@ -64,14 +88,13 @@ router.post('/login', async (req, res) => {
       token ,
       wstoken,
       isAdmin,
-      blocked 
+      blocked,
+      type
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to log in' });
   }
 });
-
-
 
 router.get('/users', async (req, res) => {
   try {
@@ -88,7 +111,6 @@ router.get('/users', async (req, res) => {
     const users = await Signup.find({ isAdmin: false }, '-password');
     res.json(users);
   } catch (error) {
-
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
@@ -134,7 +156,7 @@ router.put('/users/:userId/block', async (req, res) => {
             // First attempt with user_id
             try {
               const response = await axios.delete(
-                `https://graph.instagram.com/v21.0/${instagramId}/subscribed_apps`,
+                `https://graph.instagram.com/v23.0/${instagramId}/subscribed_apps`,
                 {
                   headers: {
                     'Authorization': `Bearer ${accessToken}`
@@ -144,9 +166,6 @@ router.put('/users/:userId/block', async (req, res) => {
               console.log('Successfully unsubscribed from webhooks:', response.data);
             } catch (error) {
               console.error('Failed to unsubscribe with Instagram ID:', error);
-              
-              // Second attempt with APP_ID if the first attempt fails
-             
             }
           }
         }
@@ -169,7 +188,7 @@ router.put('/users/:userId/block', async (req, res) => {
             // First attempt with user_id
             try {
               const subscribeResponse = await axios.post(
-                `https://graph.instagram.com/v21.0/${instagramId}/subscribed_apps`,
+                `https://graph.instagram.com/v23.0/${instagramId}/subscribed_apps`,
                 null,  // no request body needed
                 {
                   params: {
@@ -181,9 +200,6 @@ router.put('/users/:userId/block', async (req, res) => {
               console.log('Webhook subscription successful:', subscribeResponse.data)
             } catch (error) {
               console.error('Failed to subscribe with Instagram ID:', error);
-              
-              // Second attempt with APP_ID if the first attempt fails
-             
             }
           }
         }
@@ -207,5 +223,5 @@ router.put('/users/:userId/block', async (req, res) => {
   }
 });
 
-
 module.exports = router;
+
